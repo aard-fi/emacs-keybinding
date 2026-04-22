@@ -123,7 +123,6 @@ There is no global default debug level - but unticking the checkbox below will e
 #+END_EXPORT
 
 #+BEGIN_EXPORT html
-<script src="jquery-3.7.0.min.js"></script>
 <script src="theme.js"></script>
 <script src="options.js"></script>
 #+END_EXPORT
