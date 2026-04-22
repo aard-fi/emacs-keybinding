@@ -46,6 +46,6 @@ jobs:
             git log --oneline --pretty=format:"* %s" > release_notes.md
           fi
 
-          gh release create "${{ github.ref_name }}" Emacs-keybinding.zip \
+          gh release create "${{ github.ref_name }}" Emacs-keybinding*.zip \
             --title "Release ${{ github.ref_name }}" \
             --generate-notes release_notes.md
