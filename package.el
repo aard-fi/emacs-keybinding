@@ -10,7 +10,7 @@
 Returns a list with information:
   :last-tag is the last tag found
   :head-is-tagged returns t if HEAD has a tag, nil otherwise
-  :tag-on-head returns the tag on HEAD, nil otherwise
+  :head-tag returns the tag on HEAD, nil otherwise
   :count returns the commit count since last tag
   :hash returns the hash of HEAD"
   (let* ((last-tag (with-temp-buffer
@@ -31,7 +31,7 @@ Returns a list with information:
                     (if (re-search-forward "[^\n]+" nil t) (match-string 0) "unknown"))))
     (list :last-tag last-tag
           :head-is-tagged (if head-tag t nil)
-          :tag-on-head head-tag
+          :head-tag head-tag
           :count count
           :hash rev-hash)))
 
