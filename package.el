@@ -49,7 +49,7 @@ run."
 
     (if is-chrome
         ;; chrome: set version and version_name
-        (let ((version-name (if on-tag tag (format "%s-dev.%s.%s" tag count hash))))
+        (let ((version-name (build-version-name git-info)))
           (setf (alist-get 'version manifest) tag)
           (setf (alist-get 'version_name manifest) version-name))
       ;; firefox: remove version name, add 4th digit for developer builds
@@ -65,6 +65,14 @@ run."
         (insert (json-encode manifest))))
         (message "Updated %s for %s" manifest-path (if is-chrome "Chrome" "Firefox"))))
 
+(defun build-version-name (git-info)
+  "Build the version name from the git info string"
+  (let* ((tag      (plist-get git-info :last-tag))
+         (on-tag   (plist-get git-info :head-tag))
+         (count    (plist-get git-info :count))
+         (hash     (plist-get git-info :hash)))
+    (if on-tag tag (format "%s-dev.%s.%s" tag count hash))))
+
 (defun make-html()
   "Export all org files to html. This expects files to have #+EXPORT_FILE_NAME: set correctly."
   (let ((org-files (directory-files-recursively "." (rx ".org"))))
@@ -75,18 +83,22 @@ run."
                   (org-mode)
                   (org-html-export-to-html)))) org-files)))
 
-(defun make-zip()
+(defun make-zip(is-chrome)
   "Pack up everything that should be part of the extension in a zip file. Zip
 output will be available in the *zip* buffer. Also updates manifest.json with
 version info from git tags."
-  (let ((git-info (get-git-info))
+  (let* ((git-info (get-git-info))
+         (zip-name (format "../Emacs-keybinding-%s-%s.zip"
+                           (build-version-name git-info)
+                           (if is-chrome "chrome" "firefox")))
         (zip-files))
     (when git-info
-      (update-manifest-version git-info "manifest.json" nil))
+      (update-manifest-version git-info "manifest.json" is-chrome))
     (setq zip-files (directory-files-recursively "." (rx (or ".html" ".js" ".json" ".png" "icons" "LICENSE"))))
-    (apply #'call-process "zip" nil "*zip*" nil "-r" "-FS" "../Emacs-keybinding.zip" (append zip-files))))
+    (apply #'call-process "zip" nil "*zip*" nil "-r" "-FS" zip-name (append zip-files))))
 
 (message "Building html pages...")
 (make-html)
 (message "Building zip...")
-(make-zip)
+(make-zip nil)
+(make-zip t)
