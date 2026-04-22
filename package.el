@@ -88,7 +88,7 @@ run."
 output will be available in the *zip* buffer. Also updates manifest.json with
 version info from git tags."
   (let* ((git-info (get-git-info))
-         (zip-name (format "../Emacs-keybinding-%s-%s.zip"
+         (zip-name (format "Emacs-keybinding-%s-%s.zip"
                            (build-version-name git-info)
                            (if is-chrome "chrome" "firefox")))
         (zip-files))
