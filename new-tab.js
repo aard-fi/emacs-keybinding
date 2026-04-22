@@ -313,10 +313,14 @@ function registerHistoryCompleter(input){
     }
   }
 
-  document.addEventListener("click", function(event){
-    destroyCompletions(event.target);
-  });
-
+  // make sure we register the click handler for dismissing the completion popup
+  // only once
+  if (!window.completionClickHandler) {
+    window.completionClickHandler = function(event) {
+      destroyCompletions(event.target);
+    };
+    document.addEventListener("click", window.completionClickHandler);
+  }
 }
 
 function updatePage(){
@@ -359,4 +363,4 @@ loadOptions();
 const form = document.getElementById("form");
 form.addEventListener("submit", urlOrSearch);
 
-document.addEventListener("DOMContentLoaded", () => { state.dom_ready = true; updatePage });
+document.addEventListener("DOMContentLoaded", () => { state.dom_ready = true; updatePage(); });
