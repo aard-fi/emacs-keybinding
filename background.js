@@ -188,8 +188,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse(true);
       break;
     case "options_page":
-      var opening = chrome.runtime.openOptionsPage();
-      opening.then(onSuccess, onError);
+      try {
+        var opening = chrome.runtime.openOptionsPage();
+        if (opening && opening.then) {
+          opening.then(onSuccess, onError);
+        }
+      } catch (e) {
+        console.log(`Error opening options page: ${e}`);
+      }
       sendResponse(true);
       break;
     case "search":
