@@ -31,21 +31,22 @@ var default_options = {
   nt_top_nofavicons: false
 }
 
-// this makes sure options are set without loading the options page
-// additionally this should avoid problems with the background service
-// restarting for manifest 3 in the future
-for (const key in default_options){
-  chrome.storage.sync.get(key, function (setting) {
-    if (Object.keys(setting).length == 0){
-      var value = default_options[key];
-      chrome.storage.sync.set({[key]: value});
-      options[key] = value;
-    } else
-      options[key] = setting[key];
+// unlike the old way this only fires on update/install, not every time
+// the service worker wakes up. On update this pulls existing values,  merges
+// it with the defaults, and writes it back to storage.
+chrome.runtime.onInstalled.addListener((details) => {
+  chrome.storage.sync.get(default_options, (data) => {
+    chrome.storage.sync.set(data);
   });
-}
 
-console.log(options);
+  // in case we ever want to add a "first install" screen:
+  //if (details.reason === 'install') {
+  //}
+});
+
+chrome.storage.sync.get(default_options, function(stored) {
+  Object.assign(options, stored);
+});
 
 function onSuccess(){
 }
