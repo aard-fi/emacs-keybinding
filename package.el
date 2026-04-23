@@ -103,7 +103,7 @@ Returns a list with information:
                      ;; we can do per-browser excludes here. If none, just
                      ;; (vector) works fine, otherwise (vector "f.ts" "f2.ts")
                      (exclude . ,(if is-chrome
-                                     (vector "node_modules" "lisp.ts" "new-tab.ts" "theme.ts")
+                                     (vector "node_modules" "lisp.ts")
                                    (vector "node_modules" "lisp.ts"))))))
     (with-temp-file ts-config-path
       (let ((json-encoding-pretty-print t))

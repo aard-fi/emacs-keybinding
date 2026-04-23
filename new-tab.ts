@@ -1,3 +1,32 @@
+// Browser compatibility shim: Firefox uses `browser`, Chrome uses `chrome`
+const _b = (() => {
+  const isFirefox = typeof (globalThis as any).browser !== 'undefined';
+  const ff: any = isFirefox ? (globalThis as any).browser : null;
+  return {
+    tabs: {
+      query: (opts: any) => isFirefox ? ff.tabs.query(opts) : chrome.tabs.query(opts)
+    },
+    search: {
+      search: (opts: any) => isFirefox
+        ? ff.search.search(opts)
+        : (chrome as any).search.query({text: opts.query, disposition: opts.disposition}),
+      get: (): Promise<any[]> => isFirefox ? ff.search.get() : Promise.resolve([])
+    },
+    topSites: {
+      // Chrome's topSites.get() doesn't support the options object
+      get: (opts?: any) => isFirefox ? ff.topSites.get(opts) : chrome.topSites.get()
+    },
+    history: {
+      search: (opts: any) => isFirefox ? ff.history.search(opts) : chrome.history.search(opts)
+    },
+    runtime: {
+      sendMessage: (msg: any) => isFirefox
+        ? ff.runtime.sendMessage(msg)
+        : chrome.runtime.sendMessage(msg)
+    }
+  };
+})();
+
 var urlbar: HTMLInputElement | null = null;
 var options: Record<string, any> = {};
 var default_options: Record<string, any> = {};
@@ -12,8 +41,8 @@ async function urlOrSearch(event: Event): Promise<void> {
 
     try {
       if (options.experimental == true) {
-        let tabs = (browser as any).tabs.query({url: urlbar!.value});
-        let all_tabs = (browser as any).tabs.query({currentWindow: true});
+        let tabs = _b.tabs.query({url: urlbar!.value});
+        let all_tabs = _b.tabs.query({currentWindow: true});
 
         chrome.runtime.sendMessage({action: "log", msg: `Queried tabs for ${urlbar!.value}: ${JSON.stringify(tabs)}`});
         chrome.runtime.sendMessage({action: "log", msg: `Queried all tabs: ${JSON.stringify(all_tabs)}`});
@@ -52,7 +81,7 @@ async function urlOrSearch(event: Event): Promise<void> {
 
   // disposition came with version 111
   try {
-    (browser as any).search.search({
+    _b.search.search({
       query: urlbar!.value,
       disposition: "CURRENT_TAB"
     });
@@ -63,7 +92,7 @@ async function urlOrSearch(event: Event): Promise<void> {
 
   // this will open the search in a new tab, unless tab ID is provided
   try {
-    (browser as any).search.search({
+    _b.search.search({
       query: urlbar!.value,
     });
     return;
@@ -73,7 +102,7 @@ async function urlOrSearch(event: Event): Promise<void> {
 }
 
 async function loadTopSites(): Promise<void> {
-  let topSites = await (browser as any).topSites.get({
+  let topSites = await _b.topSites.get({
     includeFavicon: !options.nt_top_nofavicons,
     includeBlocked: options.nt_top_blocked,
     includePinned: options.nt_top_pinned,
@@ -105,7 +134,7 @@ async function loadTopSites(): Promise<void> {
 }
 
 async function loadSearchEngines(): Promise<void> {
-  let engines: any[] = await (browser as any).search.get();
+  let engines: any[] = await _b.search.get();
   let table = document.getElementById("search_engine_table") as HTMLTableElement;
 
   let keys = Object.keys(engines);
@@ -155,7 +184,7 @@ async function loadSearchEngines(): Promise<void> {
 }
 
 async function loadOptions(): Promise<void> {
-  (browser as any).runtime.sendMessage({action: "options"}).then((message: any) => {
+  _b.runtime.sendMessage({action: "options"}).then((message: any) => {
     state.options_ready = true;
     options = message.response.current_options;
     default_options = message.response.default_options;
@@ -186,7 +215,7 @@ function registerHistoryCompleter(input: HTMLInputElement): void {
       'level': 'debug',
       'message': `URL value: ${this.value}, until ${historyDate}`
     }});
-    let completions: any[] = await (browser as any).history.search({
+    let completions: any[] = await _b.history.search({
       text: this.value,
       maxResults: Number(options.nt_history_max_items) || default_options.nt_history_max_items,
       startTime: historyDate
