@@ -14,7 +14,14 @@ var search_ns: SearchNamespace = (window as any).__search_ns;
 var current_binding: BindingMap | null = null;
 var search_input_id = "emacsBindingsSearchInput";
 
-chrome.runtime.sendMessage({action: "log", msg: {
+function safeSendMessage(msg: any, callback?: (response: any) => void): void {
+  try {
+    if (callback) chrome.runtime.sendMessage(msg, callback);
+    else chrome.runtime.sendMessage(msg);
+  } catch (_) { /* extension context invalidated */ }
+}
+
+safeSendMessage({action: "log", msg: {
   'subsystem': 'content',
   'level': 'debug',
   'message': `Loading content script in ${document.title}`
@@ -74,8 +81,8 @@ var nomod_keybindings: BindingMap = {
 var experimental_keybindings: BindingMap = {};
 
 var search_keybindings: BindingMap = {
-  "C-s": () => chrome.runtime.sendMessage({action: "search"}),
-  "C-r": () => chrome.runtime.sendMessage({action: "search"}),
+  "C-s": () => safeSendMessage({action: "search"}),
+  "C-r": () => safeSendMessage({action: "search"}),
 };
 
 var body_keybindings: BindingMap = {
@@ -93,23 +100,23 @@ var body_keybindings: BindingMap = {
   "C-B": () => window.history.back(),
 
   // tabs
-  "M-f": () => chrome.runtime.sendMessage({action: "next_tab"}),
-  "M-b": () => chrome.runtime.sendMessage({action: "previous_tab"}),
+  "M-f": () => safeSendMessage({action: "next_tab"}),
+  "M-b": () => safeSendMessage({action: "previous_tab"}),
 
   "C-h": {
-    "?": () => chrome.runtime.sendMessage({action: "options_page"}),
-    "s": () => chrome.runtime.sendMessage({action: "search"}),
+    "?": () => safeSendMessage({action: "options_page"}),
+    "s": () => safeSendMessage({action: "search"}),
   },
 
   "C-x": {
-    "k":   () => chrome.runtime.sendMessage({action: "close_tab"}),
-    "C-f": () => chrome.runtime.sendMessage({action: "new_tab"})
+    "k":   () => safeSendMessage({action: "close_tab"}),
+    "C-f": () => safeSendMessage({action: "new_tab"})
   },
 
   "C-u": {
     "C-x": {
-      "k":   () => chrome.runtime.sendMessage({action: "close_window"}),
-      "C-f": () => chrome.runtime.sendMessage({action: "new_window"})
+      "k":   () => safeSendMessage({action: "close_window"}),
+      "C-f": () => safeSendMessage({action: "new_window"})
     }
   }
 };
@@ -180,16 +187,16 @@ document.addEventListener("keyup", (e: KeyboardEvent) => {
     var target_value = (e.target as HTMLInputElement).value;
 
     if (target_value.length > 0) {
-      chrome.runtime.sendMessage({action: "find", search: target_value});
+      safeSendMessage({action: "find", search: target_value});
     } else {
-      chrome.runtime.sendMessage({action: "find_clear"});
+      safeSendMessage({action: "find_clear"});
     }
   }
 }, true);
 
 document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (e.key == "Shift" || e.key == "Control" || e.key == "Alt" || e.key == "Meta") {
-    chrome.runtime.sendMessage({action: "log", msg: {
+    safeSendMessage({action: "log", msg: {
       'subsystem': 'keybinding',
       'level': 'debug',
       'message': "Ignoring modifier"
@@ -200,7 +207,7 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
   var key = get_key(e),
       target_type = (e.target as HTMLElement).tagName.toLowerCase();
 
-  chrome.runtime.sendMessage({action: "log", msg: {
+  safeSendMessage({action: "log", msg: {
     'subsystem': 'keybinding',
     'level': 'debug',
     'message': `user press key is ${key}, target type is ${target_type}`
@@ -210,7 +217,7 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
     current_binding = get_current_bind(target_type);
   }
 
-  chrome.runtime.sendMessage({action: "log", msg: {
+  safeSendMessage({action: "log", msg: {
     'subsystem': 'keybinding',
     'level': 'debug',
     'message': `current binding is ${Object.keys(current_binding)}`
@@ -235,7 +242,7 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
 
 chrome.runtime.onMessage.addListener((msg: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (msg.action != "log")
-    chrome.runtime.sendMessage({action: "log", msg: {
+    safeSendMessage({action: "log", msg: {
       'subsystem': 'content',
       'level': 'debug',
       'message': `action: ${msg.action}`
