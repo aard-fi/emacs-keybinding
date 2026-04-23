@@ -1,6 +1,8 @@
 var params = new URLSearchParams(window.location.search);
 var mode = params.get('mode') || 'search';
 
+var port = chrome.runtime.connect({name: 'minibuffer'});
+
 var prompts = {
   search: 'Search:'
 };
@@ -43,4 +45,7 @@ if (input) {
       }
     }
   });
+
+  window.focus();
+  input.focus();
 }

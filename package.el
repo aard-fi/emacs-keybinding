@@ -31,14 +31,16 @@
                                    ((gecko . ((id . "{e95dd474-674a-4768-9965-8360529685a5}")))))
         (permissions . ["activeTab" "history" "search" "storage" "tabs" "topSites"])
         (browser_action .
-                        ((default_icon . (("19" . "icons/emacs-19.png")
+                        ((default_title . "Emacs keybinding")
+                         (default_popup . "/popup/minibuffer.html")
+                         (default_icon . (("19" . "icons/emacs-19.png")
                                           ("38" . "icons/emacs-38.png")))))
         (icons . (("48" . "icons/emacs-48.png")
                   ("96" . "icons/emacs-96.png")))
         (options_ui . ((page . "options.html")))
         (content_scripts .
                          [((matches . ["<all_urls>"])
-                           (js . ["keybindings.js"])) ])))
+                           (js . ["keybindings.js" "search.js"])) ])))
 
 (defun get-git-info ()
   "Get Git metadata using Emacs built-in VC-Git.
@@ -99,9 +101,6 @@ This also handles different manifest versions."
                               (format "%s.%s" tag count))))
         (setf (alist-get 'manifest_version manifest) 2)
         (setf (alist-get 'version manifest) version-number)
-        ;; add 'find' permissions
-        (setf (alist-get 'permissions manifest)
-              (vconcat (alist-get 'permissions manifest) ["find"]))
         ;; add the developer key
         (setf (alist-get 'developer manifest) '(("name" . "Bernd Wachter")))
         ;; remove version_name if it exists
@@ -115,8 +114,13 @@ This also handles different manifest versions."
         (setf (alist-get 'background manifest) '(("scripts" . ("background.js")))))
        ((eq manifest-version 3)
         (message "Building for manifest V3")
-        (setf manifest (assq-delete-all 'browser_action manifest))
-        (setf manifest (assq-delete-all 'background manifest)))
+        (let ((action-data (alist-get 'browser_action manifest)))
+          ;; browser_action is action in v3, but same data -> rename
+          (setf (alist-get 'action manifest) action-data)
+          (setf manifest (assq-delete-all 'browser_action manifest))
+          (setf manifest (assq-delete-all 'background manifest))
+          (setf (alist-get 'background manifest)
+                '((service_worker . "background.js")))))
        (t
         (error "Unsupported manifest version: %s" manifest-version))))
 

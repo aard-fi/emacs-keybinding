@@ -1,4 +1,5 @@
 var options = {}
+var search_tab_id = null;
 
 function getManifestVersion() {
   return chrome.runtime.getManifest().manifest_version;
@@ -19,6 +20,7 @@ var default_options = {
   debug_level_history: 1,
   debug_level_theme: 1,
   bindings_without_modifier: false,
+  bindings_search: true,
   experimental: false,
   preferred_input: "dialog",
   nt_url_autosubmit: true,
@@ -104,27 +106,18 @@ function logMsg(msg){
   return false
 }
 
-/* Eventually this should
- * - highlight matches as typed
- * - jump to the first match as it is developing
- * - jump to the second match when C-s is pressed again
- */
-function handle_find(results){
-  logMsg("Handling find, results: " + results.count);
-  if (results.count > 0) {
-    browser.find.highlightResults();
-  }
-}
 
-function handleAction(tab) {
-  search_tab_id = tab ? tab.id : null;
-  if (getManifestVersion() !== 3) {
-    browser.browserAction.setPopup({popup: "/popup/minibuffer.html?mode=search"});
-    browser.browserAction.openPopup();
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'minibuffer') {
+    port.onDisconnect.addListener(() => {
+      if (search_tab_id) {
+        chrome.tabs.sendMessage(search_tab_id, {action: 'find_clear'}, () => {
+          if (chrome.runtime.lastError) {}
+        });
+      }
+    });
   }
-}
-
-getAction().onClicked.addListener(handleAction);
+});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
@@ -211,19 +204,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       sendResponse(true);
       break;
-    case "search":
-      browser.browserAction.setPopup({popup: "/popup/search.html"} );
-      browser.browserAction.openPopup();
+    case "search": {
+      search_tab_id = current_tab ? current_tab.id : null;
+      var action = getAction();
+      action.setPopup({popup: "/popup/minibuffer.html?mode=search"});
+      var opening = action.openPopup();
+      if (opening && opening.catch) {
+        opening.catch(e => {
+          logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open popup error: ' + e.message});
+        });
+      }
       sendResponse(true);
       break;
+    }
     case "find":
-      if (msg.search.length > 0){
+      if (msg.search.length > 0) {
         logMsg(`Searching for: ${msg.search}`);
-        browser.find.find(msg.search, { includeRectData: true }).then(handle_find);
+        var find_tab = search_tab_id || (current_tab ? current_tab.id : null);
+        if (find_tab) chrome.tabs.sendMessage(find_tab, {action: 'find', search: msg.search});
         sendResponse(true);
       } else
         sendResponse(false);
       break;
+    case "find_next": {
+      var next_tab = search_tab_id || (current_tab ? current_tab.id : null);
+      if (next_tab) chrome.tabs.sendMessage(next_tab, {action: 'find_next'});
+      sendResponse(true);
+      break;
+    }
+    case "find_previous": {
+      var prev_tab = search_tab_id || (current_tab ? current_tab.id : null);
+      if (prev_tab) chrome.tabs.sendMessage(prev_tab, {action: 'find_previous'});
+      sendResponse(true);
+      break;
+    }
+    case "find_activate": {
+      var act_tab = search_tab_id || (current_tab ? current_tab.id : null);
+      if (act_tab) {
+        chrome.tabs.sendMessage(act_tab, {action: 'find_activate'}, () => {
+          if (chrome.runtime.lastError) { /* content script may not be present */ }
+          sendResponse(true);
+        });
+        return true;
+      }
+      sendResponse(true);
+      break;
+    }
+    case "find_clear": {
+      var clear_tab = search_tab_id || (current_tab ? current_tab.id : null);
+      if (clear_tab) {
+        chrome.tabs.sendMessage(clear_tab, {action: 'find_clear'}, () => {
+          if (chrome.runtime.lastError) { /* content script may not be present */ }
+          sendResponse(true);
+        });
+        return true;
+      }
+      sendResponse(true);
+      break;
+    }
     default:
       logMsg(`Unknown action: ${msg.action}`);
       sendResponse(false);

@@ -32,28 +32,6 @@ function generate_ESC_bindings(bindings){
   return new_bindings;
 }
 
-function create_search_dialog(){
-  var idString = "emacsBindingsSearchDialog";
-
-  let node = document.getElementById(idString);
-  if (node){
-    chrome.runtime.sendMessage({action: "log", msg: "Search box seems to exist already"});
-    node.showModal();
-  } else {
-    chrome.runtime.sendMessage({action: "log", msg: "Trying to create search box"});
-    var dialog = document.createElement("dialog");
-    dialog.id = idString;
-    dialog.role = 'dialog';
-    dialog.innerHTML = `
-Forward search:
-<form>
-<label><input type="search" name="${search_input_id}" id="${search_input_id}" autofocus/><br/>
-</form>
-`
-    document.body.appendChild(dialog);
-    dialog.showModal();
-  }
-}
 
 const focus_window = () => {
   if (document.activeElement) {
@@ -73,12 +51,12 @@ var nomod_keybindings = {
   "t": () => focus_first_input(),
 }
 
-var experimental_keybindings_dialog = {
-  "C-s": () => create_search_dialog(),
+var experimental_keybindings = {
 }
 
-var experimental_keybindings_popup = {
+var search_keybindings = {
   "C-s": () => chrome.runtime.sendMessage({action: "search"}),
+  "C-r": () => chrome.runtime.sendMessage({action: "search"}),
 }
 
 var body_keybindings = {
@@ -101,6 +79,7 @@ var body_keybindings = {
 
   "C-h": {
     "?": () => chrome.runtime.sendMessage({action: "options_page"}),
+    "s": () => chrome.runtime.sendMessage({action: "search"}),
   },
 
   "C-x": {
@@ -137,15 +116,15 @@ chrome.storage.sync.get("bindings_without_modifier", function (setting) {
   }
 });
 
+chrome.storage.sync.get("bindings_search", function (setting) {
+  if (setting["bindings_search"] == true){
+    Object.assign(generated_keybindings, search_keybindings);
+  }
+});
+
 chrome.storage.sync.get("experimental", function (setting) {
   if (setting["experimental"] == true){
-    chrome.storage.sync.get("preferred_input", function (setting) {
-      if (setting["preferred_input"] == "dialog"){
-        Object.assign(generated_keybindings, experimental_keybindings_dialog);
-      } else if (setting["preferred_input"] == "popup"){
-        Object.assign(generated_keybindings, experimental_keybindings_popup);
-      }
-    });
+    Object.assign(generated_keybindings, experimental_keybindings);
   }
 });
 
@@ -178,13 +157,14 @@ document.addEventListener("keyup", (e) => {
   var target_type = e.target.tagName.toLowerCase();
   var target_id = e.target.id;
 
-  if (target_type == "input" && target_id == search_input_id){
+  // Handle search input in new-tab.html (urlbar) or dialog/popup (search_input_id)
+  if (target_type == "input" && (target_id == search_input_id || target_id == "urlbar")){
     var target_value = e.target.value;
 
     if (target_value.length > 0){
       chrome.runtime.sendMessage({action: "find", search: target_value});
     } else {
-      chrome.runtime.sendMessage({action: "log", msg: "Search string too short"});
+      chrome.runtime.sendMessage({action: "find_clear"});
     }
   }
 }, true);
@@ -192,8 +172,8 @@ document.addEventListener("keyup", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key == "Shift" || e.key == "Control" || e.key == "Alt" || e.key == "Meta"){
     chrome.runtime.sendMessage({action: "log", msg: {
-    'subsystem': 'keybinding',
-    'level': 'debug',
+      'subsystem': 'keybinding',
+      'level': 'debug',
       'message': "Ignoring modifier"
     }});
     return;
@@ -235,7 +215,7 @@ document.addEventListener("keydown", (e) => {
   }
 }, true);
 
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action != "log")
     chrome.runtime.sendMessage({action: "log", msg: {
       'subsystem': 'content',
@@ -245,6 +225,71 @@ chrome.runtime.onMessage.addListener((msg) => {
   switch(msg.action) {
     case "focus_window":
       focus_window();
+      break;
+    case "find":
+      currentSearchQuery = msg.search;
+      allMatches = findMatches(msg.search);
+      currentMatchIndex = allMatches.length > 0 ? 0 : -1;
+      applyHighlights(allMatches, currentMatchIndex);
+      scrollToMatch(currentMatchIndex);
+      break;
+    case "find_next":
+      if (allMatches.length > 0) {
+        currentMatchIndex = (currentMatchIndex + 1) % allMatches.length;
+        updateActiveHighlight(allMatches, currentMatchIndex);
+        scrollToMatch(currentMatchIndex);
+      }
+      break;
+    case "find_previous":
+      if (allMatches.length > 0) {
+        currentMatchIndex = (currentMatchIndex - 1 + allMatches.length) % allMatches.length;
+        updateActiveHighlight(allMatches, currentMatchIndex);
+        scrollToMatch(currentMatchIndex);
+      }
+      break;
+    case "find_activate": {
+      var activeNode = null;
+      if (hasCSSHighlights) {
+        if (currentMatchIndex >= 0 && currentMatchIndex < allMatches.length) {
+          var container = allMatches[currentMatchIndex].startContainer;
+          activeNode = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+        }
+      } else {
+        var activeSpan = document.querySelector('.search-highlight-active');
+        if (activeSpan) activeNode = activeSpan;
+      }
+      var clicked = false;
+      if (activeNode) {
+        var n = activeNode;
+        while (n && n !== document.body) {
+          if (n.tagName === 'A' || n.tagName === 'BUTTON' ||
+              n.getAttribute('role') === 'link' || n.getAttribute('role') === 'button') {
+            clearHighlights();
+            currentSearchQuery = "";
+            allMatches = [];
+            currentMatchIndex = -1;
+            n.click();
+            clicked = true;
+            break;
+          }
+          n = n.parentNode;
+        }
+      }
+      if (!clicked) {
+        clearHighlights();
+        currentSearchQuery = "";
+        allMatches = [];
+        currentMatchIndex = -1;
+      }
+      sendResponse(true);
+      break;
+    }
+    case "find_clear":
+      clearHighlights();
+      currentSearchQuery = "";
+      allMatches = [];
+      currentMatchIndex = -1;
+      sendResponse(true);
       break;
   }
   return true;
