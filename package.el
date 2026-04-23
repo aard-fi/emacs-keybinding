@@ -16,6 +16,7 @@
 (require 'org)
 (require 'vc-git)
 (require 'json)
+(require 'ansi-color)
 
 ;; this is the baseline manifest, set to invalid manifest version to be sure
 ;; it gets rebuilt later on.
@@ -40,7 +41,17 @@
         (options_ui . ((page . "options.html")))
         (content_scripts .
                          [((matches . ["<all_urls>"])
-                           (js . ["keybindings.js" "search.js"])) ])))
+                           (js . ["search.js" "keybindings.js"])) ])))
+
+(setq base-package-json
+      '(("name" . "emacs-keybinding")
+        ("version" . "1.0.0")
+        ("private" . t)
+        ("devDependencies" .
+         (("@types/chrome" . "^0.0.300")
+          ("@types/firefox-webext-browser" . "^120.0.0")
+          ("@types/node" . "^25.6.0")
+          ("typescript" . "^5.0.0")))))
 
 (defun get-git-info ()
   "Get Git metadata using Emacs built-in VC-Git.
@@ -72,6 +83,53 @@ Returns a list with information:
           :head-tag head-tag
           :count count
           :hash rev-hash)))
+
+(defun create-tsconfig (ts-config-path is-chrome)
+  "Build browser-specific tsconfig at `ts-config-path'.
+
+'is-chrome' selects @types/chrome only; Firefox builds also include
+@types/firefox-webext-browser."
+  (let* ((types (if is-chrome
+                    (vector "chrome")
+                  (vector "firefox-webext-browser" "chrome")))
+         (tsconfig `((compilerOptions .
+                                      ((target . "ESNext")
+                                       (lib . ,(vector "ESNext" "DOM"))
+                                       (types . ,types)
+                                       (strict . t)
+                                       (skipLibCheck . t)
+                                       (outDir . ".")))
+                     (include . ,(vector "*.ts" "popup/*.ts"))
+                     ;; we can do per-browser excludes here. If none, just
+                     ;; (vector) works fine, otherwise (vector "f.ts" "f2.ts")
+                     (exclude . ,(if is-chrome
+                                     (vector "node_modules" "lisp.ts" "new-tab.ts" "theme.ts")
+                                   (vector "node_modules" "lisp.ts"))))))
+    (with-temp-file ts-config-path
+      (let ((json-encoding-pretty-print t))
+        (insert (json-encode tsconfig))))
+    (message "Updated %s for %s" ts-config-path (if is-chrome "Chrome" "Firefox"))))
+
+(defun write-package-json (path)
+  "Write base-package-json to `path'."
+  (with-temp-file path
+    (let ((json-encoding-pretty-print t))
+      (insert (json-encode base-package-json))))
+  (message "Updated %s" path))
+
+(defun ensure-npm-deps ()
+  "Write package.json if absent, then run npm install if typescript is missing."
+  (unless (file-exists-p "package.json")
+    (write-package-json "package.json"))
+  (unless (file-executable-p (expand-file-name "node_modules/.bin/tsc"))
+    (message "Installing npm dependencies...")
+    (call-process "npm" nil "*npm-output*" nil "install")))
+
+(defun update-npm-deps ()
+  "Overwrite package.json from base-package-json and reinstall all deps."
+  (write-package-json "package.json")
+  (message "Updating npm dependencies...")
+  (call-process "npm" nil "*npm-output*" nil "install"))
 
 (defun create-manifest (git-info manifest-path is-chrome)
   "Build browser specific manifest.json
@@ -137,6 +195,24 @@ This also handles different manifest versions."
          (hash     (plist-get git-info :hash)))
     (if on-tag tag (format "%s-dev.%s.%s" tag count hash))))
 
+(defun run-tsc (config-path)
+  "Compile TypeScript with `config' using the local tsc when available,
+falling back to the system tsc."
+  (message "Compiling TypeScript with %s..." config-path)
+  (let* ((local-tsc (expand-file-name "node_modules/.bin/tsc"))
+         (tsc (if (file-executable-p local-tsc) local-tsc "tsc"))
+         (output-buffer (get-buffer-create "*tsc-output*"))
+         (exit-code (with-current-buffer output-buffer
+                      (erase-buffer)
+                      (call-process tsc nil t nil "--pretty" "-p" config-path))))
+    (with-current-buffer output-buffer
+      ;; send the raw buffer to preserve ANSI colours
+      (princ (buffer-string))
+      (unless (eq exit-code 0)
+        ;; use message+kill to avoid dumping a backtrace
+        (message "Error: TypeScript compilation failed.")
+        (kill-emacs exit-code)))))
+
 (defun make-html()
   "Export all org files to html. This expects files to have #+EXPORT_FILE_NAME: set correctly."
   (let ((org-files (directory-files-recursively "." (rx ".org"))))
@@ -159,6 +235,11 @@ version info from git tags."
     (if git-info
         (create-manifest git-info "manifest.json" is-chrome)
       (error "This needs to run in a git checkout"))
+    (ensure-npm-deps)
+    (let ((config-path (if is-chrome "tsconfig-chrome.json" "tsconfig-firefox.json")))
+      (create-tsconfig config-path is-chrome)
+      (run-tsc config-path))
+    (message "Building %s" zip-name)
     (setq zip-files (directory-files-recursively "." (rx (or ".html" ".js" ".json" ".png" "icons" "LICENSE"))))
     (apply #'call-process "zip" nil "*zip*" nil "-r" "-FS" zip-name (append zip-files))))
 

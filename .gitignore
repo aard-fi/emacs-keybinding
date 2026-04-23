@@ -1,3 +1,5 @@
 *.html
 *.zip
+*.js
 manifest.json
+tsconfig*.json

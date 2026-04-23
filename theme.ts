@@ -1,6 +1,6 @@
-async function getCurrentTheme() {
-  if (typeof browser === 'undefined' || !browser.theme) return;
-  const theme = await browser.theme.getCurrent();
+async function getCurrentTheme(): Promise<any> {
+  if (typeof browser === 'undefined' || !(browser as any).theme) return;
+  const theme = await (browser as any).theme.getCurrent();
   chrome.runtime.sendMessage({action: "log", msg: {
     'subsystem': 'theme',
     'level': 'debug',
@@ -9,7 +9,7 @@ async function getCurrentTheme() {
   return theme;
 }
 
-function updateTheme(){
+function updateTheme(): void {
   getCurrentTheme();
 }
 

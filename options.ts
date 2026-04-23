@@ -1,10 +1,10 @@
 // this might trigger a bunch of superfluous sync.set directly after
 // installation - but that's probably not worth bothering with.
-document.querySelectorAll("input").forEach(function(input) {
+document.querySelectorAll("input").forEach(function(input: HTMLInputElement) {
   input.addEventListener("change", function() {
     var key = input.id;
     var type = input.type;
-    var value;
+    var value: boolean | string;
 
     if (type === "checkbox") {
       value = input.checked;
@@ -17,19 +17,19 @@ document.querySelectorAll("input").forEach(function(input) {
   });
 });
 
-function restoreOptions() {
-  document.querySelectorAll("input").forEach(function(input) {
+function restoreOptions(): void {
+  document.querySelectorAll("input").forEach(function(input: HTMLInputElement) {
     var key = input.id;
     var type = input.type;
-    var value = false;
+    var value: boolean | string = false;
 
     chrome.storage.sync.get(key, function(setting) {
       if (Object.keys(setting).length) {
         value = setting[key];
         if (type === "checkbox") {
-          input.checked = value;
+          input.checked = value as boolean;
         } else {
-          input.value = value;
+          input.value = value as string;
         }
       } else {
         chrome.storage.sync.set({[key]: value});
