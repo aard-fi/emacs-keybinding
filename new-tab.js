@@ -325,7 +325,10 @@ function registerHistoryCompleter(input){
 
 function updatePage(){
   if (state.options_ready == true && state.dom_ready == true){
-    registerHistoryCompleter(document.getElementById("urlbar"));
+    var urlbar = document.getElementById("urlbar");
+    if (urlbar) {
+      registerHistoryCompleter(urlbar);
+    }
     if (options.nt_hide_title == true){
       document.getElementsByClassName("title")[0].style.display = "none";
     }
