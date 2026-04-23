@@ -1,5 +1,13 @@
 var options = {}
 
+function getManifestVersion() {
+  return chrome.runtime.getManifest().manifest_version;
+}
+
+function getAction() {
+  return getManifestVersion() === 3 ? chrome.action : browser.browserAction;
+}
+
 var default_options = {
   own_tab_page: true,
   debug_log: false,
@@ -108,11 +116,15 @@ function handle_find(results){
   }
 }
 
-function handleAction() {
-
+function handleAction(tab) {
+  search_tab_id = tab ? tab.id : null;
+  if (getManifestVersion() !== 3) {
+    browser.browserAction.setPopup({popup: "/popup/minibuffer.html?mode=search"});
+    browser.browserAction.openPopup();
+  }
 }
 
-browser.browserAction.onClicked.addListener(handleAction);
+getAction().onClicked.addListener(handleAction);
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
