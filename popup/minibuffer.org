@@ -2,7 +2,7 @@
 #+EXPORT_FILE_NAME: minibuffer.html
 #+TITLE: Minibuffer
 #+HTML_HEAD: <style type="text/css">
-#+HTML_HEAD: body { margin: 4px; padding: 0; }
+#+HTML_HEAD: body { margin: 4px; padding: 0; min-width: 320px; }
 #+HTML_HEAD: #minibuffer-wrap { display: flex; align-items: center; gap: 4px; }
 #+HTML_HEAD: #minibuffer-prompt { white-space: nowrap; font-family: monospace; }
 #+HTML_HEAD: </style>

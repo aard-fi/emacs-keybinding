@@ -194,13 +194,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse(true);
       break;
     case "options_page":
-      try {
-        var opening = chrome.runtime.openOptionsPage();
-        if (opening && opening.then) {
-          opening.then(onSuccess, onError);
+      if (getManifestVersion() === 3) {
+        chrome.tabs.create({url: chrome.runtime.getURL('options.html')});
+      } else {
+        try {
+          var opening = chrome.runtime.openOptionsPage();
+          if (opening && opening.then) {
+            opening.then(onSuccess, onError);
+          }
+        } catch (e) {
+          console.log(`Error opening options page: ${e}`);
         }
-      } catch (e) {
-        console.log(`Error opening options page: ${e}`);
       }
       sendResponse(true);
       break;

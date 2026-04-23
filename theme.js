@@ -1,4 +1,5 @@
 async function getCurrentTheme() {
+  if (typeof browser === 'undefined' || !browser.theme) return;
   const theme = await browser.theme.getCurrent();
   chrome.runtime.sendMessage({action: "log", msg: {
     'subsystem': 'theme',
