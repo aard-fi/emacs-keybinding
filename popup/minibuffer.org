@@ -1,0 +1,18 @@
+#+OPTIONS: html-postamble:nil toc:nil title:nil
+#+EXPORT_FILE_NAME: minibuffer.html
+#+TITLE: Minibuffer
+#+HTML_HEAD: <style type="text/css">
+#+HTML_HEAD: body { margin: 4px; padding: 0; }
+#+HTML_HEAD: #minibuffer-wrap { display: flex; align-items: center; gap: 4px; }
+#+HTML_HEAD: #minibuffer-prompt { white-space: nowrap; font-family: monospace; }
+#+HTML_HEAD: </style>
+
+#+BEGIN_EXPORT html
+<div id="minibuffer-wrap">
+  <span id="minibuffer-prompt">Search:</span>
+  <form id="form" style="flex:1;margin:0">
+  <input type="search" name="minibuffer-input" id="minibuffer-input" autocomplete="off" autofocus style="width:100%"/>
+  </form>
+</div>
+<script src="../minibuffer.js"></script>
+#+END_EXPORT
