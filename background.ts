@@ -46,6 +46,15 @@ chrome.windows.onRemoved.addListener((windowId) => {
 
 // Search overrides this temporarily with ?mode=search; restored on disconnect.
 getAction().setPopup({popup: '/popup/minibuffer.html'});
+// onClicked only fires when popup is '' (no URL), so it is never triggered in
+// normal operation. Registering it anyway provides the user-gesture context
+// Firefox requires for openPopup() to work from a background message handler.
+const _actionTarget: any = getManifestVersion() === 3
+  ? (globalThis as any).chrome?.action
+  : (globalThis as any).browser?.browserAction;
+if (_actionTarget?.onClicked) {
+  _actionTarget.onClicked.addListener(() => {});
+}
 
 var default_options: Record<string, any> = {
   own_tab_page: true,
@@ -255,12 +264,16 @@ chrome.runtime.onMessage.addListener((msg: any, sender: chrome.runtime.MessageSe
       break;
     case "search": {
       search_tab_id = current_tab ? current_tab.id! : null;
-      var action = getAction();
-      action.setPopup({popup: "/popup/minibuffer.html?mode=search"});
-      var opening = action.openPopup();
+      const searchAction = getAction();
+      searchAction.setPopup({popup: "/popup/minibuffer.html?mode=search"});
+      const opening = searchAction.openPopup();
       if (opening && (opening as Promise<void>).catch) {
         (opening as Promise<void>).catch((e: Error) => {
           logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open popup error: ' + e.message});
+          // openPopup() failed — restore popup URL so the toolbar button
+          // opens the editor instead of being stuck on search mode.
+          searchAction.setPopup({popup: '/popup/minibuffer.html'});
+          search_tab_id = null;
         });
       }
       sendResponse(true);
