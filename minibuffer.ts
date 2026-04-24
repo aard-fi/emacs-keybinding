@@ -113,7 +113,14 @@ if (mode === 'search' && input) {
     const persistMode = settings.lisp_buffer_persist as string;
     setRemoteLoadAllowed(!!settings.remote_lisp);
 
-    let initialDoc = ';; Type Lisp here\n';
+    const DEFAULT_DOC = `;; Type Lisp here, C-x C-e to eval
+;; (ext:clear-context) to clear persistent lisp engine context
+;; (ext:clear-buffer) or C-x k to clear persistent buffer content
+;; Open settings (C-h ?) to configure buffer persistence
+
+`;
+
+    let initialDoc = DEFAULT_DOC;
     if (persistMode === 'local') {
       const stored = await storageGet(chrome.storage.local, 'lisp_buffer');
       if (stored.lisp_buffer) initialDoc = stored.lisp_buffer;
@@ -159,11 +166,23 @@ if (mode === 'search' && input) {
       return true;
     };
 
+    const clearBuffer = (view: EditorView): boolean => {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: DEFAULT_DOC },
+        selection: { anchor: DEFAULT_DOC.length },
+      });
+      showOutput('');
+      if (persistMode === 'local') chrome.storage.local.set({lisp_buffer: DEFAULT_DOC});
+      else if (persistMode === 'sync') chrome.storage.sync.set({lisp_buffer: DEFAULT_DOC});
+      return true;
+    };
+
     const editorView = new EditorView({
       doc: initialDoc,
       extensions: [
         Prec.highest(keymap.of([
           { key: "Ctrl-x Ctrl-e", run: evalAtCursor },
+          { key: "Ctrl-x k",      run: clearBuffer },
         ])),
         basicSetup,
         StreamLanguage.define(commonLisp),
@@ -175,6 +194,9 @@ if (mode === 'search' && input) {
       ],
       parent: editorContainer
     });
+
+    // ext:clear-buffer reachable from evaluated lisp code
+    globalEnv.set('ext:clear-buffer', () => { clearBuffer(editorView); return null; });
 
     editorView.focus();
   })();
