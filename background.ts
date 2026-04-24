@@ -1,7 +1,5 @@
 import { run, runAll, globalEnv, lispToString, setRemoteLoadAllowed } from './lisp';
 
-(globalThis as any).lisp = { run, runAll, globalEnv, lispToString };
-
 var options: Record<string, any> = {};
 var search_tab_id: number | null = null;
 var editor_window_id: number | null = null;

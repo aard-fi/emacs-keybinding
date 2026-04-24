@@ -5,8 +5,6 @@ import { StreamLanguage } from "@codemirror/language";
 import { commonLisp } from "@codemirror/legacy-modes/mode/commonlisp";
 import { run, runAll, globalEnv, lispToString, snapshotGlobalEnv, restoreGlobalEnv, setRemoteLoadAllowed } from "./lisp";
 
-// expose Lisp interpreter globally for JS interop and debug console use
-(globalThis as any).lisp = { run, runAll, globalEnv, lispToString };
 
 // chrome.storage.*.get() only returns a promise in chrome mv3; in firefox's
 // chrome.* shim it is callback-only. This wrapper works in both.

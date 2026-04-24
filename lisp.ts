@@ -96,6 +96,41 @@ function bindParams(env: Env, params: LispVal | null, vals: any[]) {
   }
 }
 
+// JS-accessible namespace, populated at runtime by defun/defvar forms.
+const lispNamespace: Record<string, any> = {};
+(globalThis as any).lisp = lispNamespace;
+
+// convert a lisp name to a valid JS identifier for dot-notation access.
+// rules: strip *earmuffs*, convert kebab-case and slash/separated to camelCase.
+// returns null if the result still contains non-identifier characters
+// (e.g. >=, !, ?) — those get no alias and must be accessed via bracket notation.
+function toLispJsName(name: string): string | null {
+  const camel = name
+    .replace(/^\*+|\*+$/g, '')                        // strip *earmuffs*
+    .replace(/[-/](.)/g, (_, c: string) => c.toUpperCase()); // kebab/slash → camelCase
+  if (!camel) return null;
+  return /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(camel) ? camel : null;
+}
+
+// install an accessor descriptor on lispNamespace for both the raw lisp name
+// and (if different and valid) a camelCase JS alias.
+// The getter reads from globalEnv so JS always sees the current value;
+// the setter writes back so JS can push values into lisp.
+function exposeVar(name: string): void {
+  function installAccessor(key: string) {
+    if (Object.prototype.hasOwnProperty.call(lispNamespace, key)) delete lispNamespace[key];
+    Object.defineProperty(lispNamespace, key, {
+      get: () => { try { return globalEnv.get(name); } catch { return null; } },
+      set: (v: any) => globalEnv.set(name, v),
+      configurable: true,
+      enumerable: key === name, // only the raw name shows up in Object.keys()
+    });
+  }
+  installAccessor(name);
+  const jsName = toLispJsName(name);
+  if (jsName && jsName !== name) installAccessor(jsName);
+}
+
 function evalLisp(x: LispVal, env: Env): any {
   if (x instanceof LispSymbol) {
     if (x.name.startsWith(':')) return x; // keywords are self-evaluating
@@ -185,12 +220,14 @@ function evalLisp(x: LispVal, env: Env): any {
       } else {
         try { env.get(dvName); } catch { env.set(dvName, null); }
       }
+      exposeVar(dvName);
       return args[0];
     }
     // defparameter: always rebind
     case 'defparameter': {
       const dpName = (args[0] as LispSymbol).name;
       env.set(dpName, args.length > 1 ? evalLisp(args[1], env) : null);
+      exposeVar(dpName);
       return args[0];
     }
     // defconstant: bind once (treat like defparameter for simplicity)
@@ -295,7 +332,11 @@ function evalLisp(x: LispVal, env: Env): any {
       if (dBody.length > 1 && typeof dBody[0] === 'string') dBody = dBody.slice(1);
       const lambdaFunc: any = evalLisp([intern('lambda'), dParams, ...dBody], env);
       lambdaFunc.__lsource = [intern('defun'), dName, dParams, ...dBody];
-      return env.set(dName.name, lambdaFunc);
+      env.set(dName.name, lambdaFunc);
+      lispNamespace[dName.name] = lambdaFunc;
+      const jsName = toLispJsName(dName.name);
+      if (jsName && jsName !== dName.name) lispNamespace[jsName] = lambdaFunc;
+      return lambdaFunc;
     }
     case 'lambda': {
       const lParams = args[0] as LispVal;
@@ -939,5 +980,9 @@ export function restoreGlobalEnv(source: string): void {
     try { const f = parse(tokens); if (f !== SKIP_FORM) evalLisp(f as LispVal, globalEnv); } catch { /* skip broken forms */ }
   }
 }
+
+// expose engine API on the same namespace so callers don't need their own
+// (globalThis as any).lisp = { run, runAll, ... } assignments.
+Object.assign(lispNamespace, { run, runAll, globalEnv, lispToString, snapshotGlobalEnv, restoreGlobalEnv });
 
 export { LispVal, Env, globalEnv, evalLisp, parse, tokenize, run, runAll, lispToString };
