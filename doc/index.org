@@ -5,9 +5,15 @@
 
 * Developer documentation
 ** Browser target versions
-This extension mainly targets supported versions of Firefox. An overview about those can be found in the [[https://wiki.mozilla.org/index.php?title=Release_Management/Calendar&redirect=no][release calendar]].
+This extension mainly targets supported versions of Firefox, but also works on Chrome. An overview about those can be found in the [[https://wiki.mozilla.org/index.php?title=Release_Management/Calendar&redirect=no][release calendar]].
 
 Typically ESRs are holding back what can be supported - so end of support from Mozilla side also may mean end of support from this extension to get rid of some workarounds.
+
+We're supporting both manifest v2 and v3: Firefox builds use v2, the ones for  Chrome v3. Only the Firefox version is currently published - I'm not interested in dealing with the requirements for obtaining a Google developer account. Chrome users can add the extension in developer mode.
+
+** Building the extension
+
+Building this requires  Emacs, node and the typescript compiler =tsc= installed. With all that in place =./package.el= (or =emacs --script package.el=) should build everything. Use =firefox= as argument to only build for Firefox, =chrome= to only build Chrome. There's also a =test= target to test the custom lisp interpreter.
 
 ** Developing on Firefox
 Open a new tab and go to about:debugging (links to internal pages are not possible). Then "This Firefox" -> "Load Temporary Add-on...", navigate to add on folder, and select manifest.json.

@@ -1,15 +1,16 @@
 // this might trigger a bunch of superfluous sync.set directly after
 // installation - but that's probably not worth bothering with.
-document.querySelectorAll("input").forEach(function(input: HTMLInputElement) {
-  input.addEventListener("change", function() {
-    var key = input.id;
-    var type = input.type;
+type OptionElement = HTMLInputElement | HTMLSelectElement;
+
+document.querySelectorAll<OptionElement>("input, select").forEach(function(element) {
+  element.addEventListener("change", function() {
+    var key = element.id;
     var value: boolean | string;
 
-    if (type === "checkbox") {
-      value = input.checked;
+    if (element instanceof HTMLInputElement && element.type === "checkbox") {
+      value = element.checked;
     } else {
-      value = input.value;
+      value = element.value;
     }
 
     chrome.runtime.sendMessage({action: "option", key: key, value: value});
@@ -18,18 +19,17 @@ document.querySelectorAll("input").forEach(function(input: HTMLInputElement) {
 });
 
 function restoreOptions(): void {
-  document.querySelectorAll("input").forEach(function(input: HTMLInputElement) {
-    var key = input.id;
-    var type = input.type;
+  document.querySelectorAll<OptionElement>("input, select").forEach(function(element) {
+    var key = element.id;
     var value: boolean | string = false;
 
     chrome.storage.sync.get(key, function(setting) {
       if (Object.keys(setting).length) {
         value = setting[key];
-        if (type === "checkbox") {
-          input.checked = value as boolean;
+        if (element instanceof HTMLInputElement && element.type === "checkbox") {
+          element.checked = value as boolean;
         } else {
-          input.value = value as string;
+          element.value = value as string;
         }
       } else {
         chrome.storage.sync.set({[key]: value});

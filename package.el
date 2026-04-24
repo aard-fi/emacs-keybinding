@@ -31,6 +31,7 @@
         (browser_specific_settings .
                                    ((gecko . ((id . "{e95dd474-674a-4768-9965-8360529685a5}")))))
         (permissions . ["activeTab" "history" "search" "storage" "tabs" "topSites"])
+        (optional_permissions . ["<all_urls>"])
         (browser_action .
                         ((default_title . "Emacs keybinding")
                          (default_popup . "/popup/minibuffer.html")
@@ -51,7 +52,12 @@
          (("@types/chrome" . "^0.0.300")
           ("@types/firefox-webext-browser" . "^120.0.0")
           ("@types/node" . "^25.6.0")
-          ("typescript" . "^5.0.0")))))
+          ("esbuild" . "^0.25.0")
+          ("typescript" . "^5.0.0")))
+        ("dependencies" .
+         (("codemirror" . "^6.0.0")
+          ("@codemirror/language" . "^6.0.0")
+          ("@codemirror/legacy-modes" . "^6.0.0")))))
 
 (defun get-git-info ()
   "Get Git metadata using Emacs built-in VC-Git.
@@ -103,12 +109,33 @@ Returns a list with information:
                      ;; we can do per-browser excludes here. If none, just
                      ;; (vector) works fine, otherwise (vector "f.ts" "f2.ts")
                      (exclude . ,(if is-chrome
-                                     (vector "node_modules" "lisp.ts")
-                                   (vector "node_modules" "lisp.ts"))))))
+                                     (vector "node_modules" "repl.ts" "minibuffer.ts" "background.ts")
+                                   (vector "node_modules" "repl.ts" "minibuffer.ts" "background.ts"))))))
     (with-temp-file ts-config-path
       (let ((json-encoding-pretty-print t))
         (insert (json-encode tsconfig))))
     (message "Updated %s for %s" ts-config-path (if is-chrome "Chrome" "Firefox"))))
+
+(defun create-node-tsconfig (ts-config-path)
+  "Build a Node.js-targeted tsconfig at `ts-config-path' for repl.ts.
+
+Having that there allows an interactive repl with:
+
+npx ts-node repl.ts"
+  (let ((tsconfig '((compilerOptions .
+                                     ((target . "ES2020")
+                                      (module . "CommonJS")
+                                      (moduleResolution . "node")
+                                      (types . ["node"])
+                                      (strict . t)
+                                      (skipLibCheck . t)))
+                    (ts-node . ((preferTsExts . t)))
+                    (include . ["repl.ts" "lisp.ts"])
+                    (exclude . ["node_modules"]))))
+    (with-temp-file ts-config-path
+      (let ((json-encoding-pretty-print t))
+        (insert (json-encode tsconfig))))
+    (message "Updated %s for Node.js" ts-config-path)))
 
 (defun write-package-json (path)
   "Write base-package-json to `path'."
@@ -118,12 +145,10 @@ Returns a list with information:
   (message "Updated %s" path))
 
 (defun ensure-npm-deps ()
-  "Write package.json if absent, then run npm install if typescript is missing."
-  (unless (file-exists-p "package.json")
-    (write-package-json "package.json"))
-  (unless (file-executable-p (expand-file-name "node_modules/.bin/tsc"))
-    (message "Installing npm dependencies...")
-    (call-process "npm" nil "*npm-output*" nil "install")))
+  "Sync package.json from base-package-json and run npm install."
+  (write-package-json "package.json")
+  (message "Installing npm dependencies...")
+  (call-process "npm" nil "*npm-output*" nil "install"))
 
 (defun update-npm-deps ()
   "Overwrite package.json from base-package-json and reinstall all deps."
@@ -195,6 +220,20 @@ This also handles different manifest versions."
          (hash     (plist-get git-info :hash)))
     (if on-tag tag (format "%s-dev.%s.%s" tag count hash))))
 
+(defun run-lisp-test ()
+  "Run lisp tests via repl.ts"
+  (message "Testing lisp...")
+  (let* ((output-buffer (get-buffer-create "*lisp-output*"))
+         (exit-code (with-current-buffer output-buffer
+                      (erase-buffer)
+                      (call-process "npx" nil t nil "ts-node" "repl.ts" "selftest.lisp"))))
+    (with-current-buffer output-buffer
+      (princ (buffer-string))
+      (unless (eq exit-code 0)
+        ;; use message+kill to avoid dumping a backtrace
+        (message "Error: TypeScript compilation failed.")
+        (kill-emacs exit-code)))))
+
 (defun run-tsc (config-path)
   "Compile TypeScript with `config' using the local tsc when available,
 falling back to the system tsc."
@@ -212,6 +251,46 @@ falling back to the system tsc."
         ;; use message+kill to avoid dumping a backtrace
         (message "Error: TypeScript compilation failed.")
         (kill-emacs exit-code)))))
+
+(defun bundle-background ()
+  "Bundle background.ts and lisp.ts into background.js via esbuild."
+  (message "Bundling background.ts...")
+  (let* ((local-esbuild (expand-file-name "node_modules/.bin/esbuild"))
+         (esbuild (if (file-executable-p local-esbuild) local-esbuild "esbuild"))
+         (output-buffer (get-buffer-create "*esbuild-output*"))
+         (exit-code (with-current-buffer output-buffer
+                      (erase-buffer)
+                      (call-process esbuild nil t nil
+                                    "background.ts"
+                                    "--bundle"
+                                    "--platform=browser"
+                                    "--target=chrome105,firefox117"
+                                    "--outfile=background.js"))))
+    (with-current-buffer output-buffer
+      (princ (buffer-string)))
+    (unless (eq exit-code 0)
+      (message "Error: esbuild bundling of background.ts failed.")
+      (kill-emacs exit-code))))
+
+(defun bundle-minibuffer ()
+  "Bundle minibuffer.ts and its npm dependencies into minibuffer.js via esbuild."
+  (message "Bundling minibuffer.ts...")
+  (let* ((local-esbuild (expand-file-name "node_modules/.bin/esbuild"))
+         (esbuild (if (file-executable-p local-esbuild) local-esbuild "esbuild"))
+         (output-buffer (get-buffer-create "*esbuild-output*"))
+         (exit-code (with-current-buffer output-buffer
+                      (erase-buffer)
+                      (call-process esbuild nil t nil
+                                    "minibuffer.ts"
+                                    "--bundle"
+                                    "--platform=browser"
+                                    "--target=chrome105,firefox117"
+                                    "--outfile=minibuffer.js"))))
+    (with-current-buffer output-buffer
+      (princ (buffer-string)))
+    (unless (eq exit-code 0)
+      (message "Error: esbuild bundling failed.")
+      (kill-emacs exit-code))))
 
 (defun make-html()
   "Export all org files to html. This expects files to have #+EXPORT_FILE_NAME: set correctly."
@@ -239,12 +318,16 @@ version info from git tags."
     (let ((config-path (if is-chrome "tsconfig-chrome.json" "tsconfig-firefox.json")))
       (create-tsconfig config-path is-chrome)
       (run-tsc config-path))
+    (bundle-background)
+    (bundle-minibuffer)
     (message "Building %s" zip-name)
-    (setq zip-files (directory-files-recursively "." (rx (or ".html" ".js" ".json" ".png" "icons" "LICENSE"))))
+    (setq zip-files (directory-files-recursively "." (rx (or ".html" ".js" ".json" ".png" ".lisp" "icons" "LICENSE"))))
     (apply #'call-process "zip" nil "*zip*" nil "-r" "-FS" zip-name (append zip-files))))
 
 (message "Building html pages...")
 (make-html)
+(ensure-npm-deps)
+(create-node-tsconfig "tsconfig.json")
 
 (let ((target (car argv)))
   (cond
@@ -255,6 +338,10 @@ version info from git tags."
    ((string= target "chrome")
     (message "Building for Chrome only...")
     (make-zip t))
+
+   ((string= target "test")
+    (message "Running lisp tests...")
+    (run-lisp-test))
 
    (t
     (message "No specific target or unknown target '%s'; building both..." (or target "all"))

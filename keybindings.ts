@@ -9,7 +9,8 @@ interface SearchNamespace {
   updateActiveHighlight(matches: Range[], activeIndex: number): void;
   scrollToMatch(index: number): void;
 }
-var search_ns: SearchNamespace = (window as any).__search_ns;
+// Resolved lazily inside the message handler after both content scripts have loaded.
+let search_ns: SearchNamespace | undefined;
 
 var current_binding: BindingMap | null = null;
 var search_input_id = "emacsBindingsSearchInput";
@@ -241,6 +242,7 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
 }, true);
 
 chrome.runtime.onMessage.addListener((msg: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+  if (!search_ns) search_ns = (window as any).__search_ns as SearchNamespace | undefined;
   if (msg.action != "log")
     safeSendMessage({action: "log", msg: {
       'subsystem': 'content',
@@ -252,6 +254,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: chrome.runtime.MessageS
       focus_window();
       break;
     case "find":
+      if (!search_ns) { sendResponse(false); break; }
       search_ns.query = msg.search;
       search_ns.matches = search_ns.findMatches(msg.search);
       search_ns.index = search_ns.matches.length > 0 ? 0 : -1;
@@ -259,20 +262,19 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: chrome.runtime.MessageS
       search_ns.scrollToMatch(search_ns.index);
       break;
     case "find_next":
-      if (search_ns.matches.length > 0) {
-        search_ns.index = (search_ns.index + 1) % search_ns.matches.length;
-        search_ns.updateActiveHighlight(search_ns.matches, search_ns.index);
-        search_ns.scrollToMatch(search_ns.index);
-      }
+      if (!search_ns || search_ns.matches.length === 0) break;
+      search_ns.index = (search_ns.index + 1) % search_ns.matches.length;
+      search_ns.updateActiveHighlight(search_ns.matches, search_ns.index);
+      search_ns.scrollToMatch(search_ns.index);
       break;
     case "find_previous":
-      if (search_ns.matches.length > 0) {
-        search_ns.index = (search_ns.index - 1 + search_ns.matches.length) % search_ns.matches.length;
-        search_ns.updateActiveHighlight(search_ns.matches, search_ns.index);
-        search_ns.scrollToMatch(search_ns.index);
-      }
+      if (!search_ns || search_ns.matches.length === 0) break;
+      search_ns.index = (search_ns.index - 1 + search_ns.matches.length) % search_ns.matches.length;
+      search_ns.updateActiveHighlight(search_ns.matches, search_ns.index);
+      search_ns.scrollToMatch(search_ns.index);
       break;
     case "find_activate": {
+      if (!search_ns) { sendResponse(false); break; }
       var activeNode: Element | null = null;
       if (search_ns.hasCSSHighlights) {
         if (search_ns.index >= 0 && search_ns.index < search_ns.matches.length) {
@@ -311,6 +313,7 @@ chrome.runtime.onMessage.addListener((msg: any, _sender: chrome.runtime.MessageS
       break;
     }
     case "find_clear":
+      if (!search_ns) { sendResponse(false); break; }
       search_ns.clearHighlights();
       search_ns.query = "";
       search_ns.matches = [];

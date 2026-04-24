@@ -75,6 +75,19 @@ Note that bindings without modifier keys are disabled per default. C-n/C-p cause
 </form>
 #+END_EXPORT
 
+** Lisp editor
+#+BEGIN_EXPORT html
+<form>
+<label>Buffer persistence
+  <select id="lisp_buffer_persist">
+    <option value="none">None (lost on close)</option>
+    <option value="local">Local (persists across sessions, this device)</option>
+    <option value="sync">Sync (persists and syncs across devices, 8 KB limit)</option>
+  </select>
+</label><br/>
+</form>
+#+END_EXPORT
+
 ** New tab page
 #+BEGIN_EXPORT html
 <form>

@@ -1,5 +1,10 @@
+import { run, runAll, globalEnv, lispToString, setRemoteLoadAllowed } from './lisp';
+
+(globalThis as any).lisp = { run, runAll, globalEnv, lispToString };
+
 var options: Record<string, any> = {};
 var search_tab_id: number | null = null;
+var editor_window_id: number | null = null;
 
 function getManifestVersion(): number {
   return chrome.runtime.getManifest().manifest_version;
@@ -15,6 +20,37 @@ function getAction(): BrowserAction {
     return chrome.action as unknown as BrowserAction;
   }
   return ((globalThis as any).browser).browserAction as BrowserAction;
+}
+
+function openEditorWindow() {
+  if (editor_window_id !== null) {
+    chrome.windows.update(editor_window_id, {focused: true}, () => {
+      if (chrome.runtime.lastError) {
+        editor_window_id = null;
+        openEditorWindow();
+      }
+    });
+    return;
+  }
+  chrome.windows.create({
+    url: chrome.runtime.getURL('popup/minibuffer.html'),
+    type: 'popup',
+    width: 800,
+    height: 500,
+  }, (win) => { editor_window_id = win?.id ?? null; });
+}
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === editor_window_id) editor_window_id = null;
+});
+
+// Leave popup empty so action.onClicked fires; search overrides it temporarily
+getAction().setPopup({popup: ''});
+const _actionTarget: any = getManifestVersion() === 3
+  ? (globalThis as any).chrome?.action
+  : (globalThis as any).browser?.browserAction;
+if (_actionTarget?.onClicked) {
+  _actionTarget.onClicked.addListener(() => openEditorWindow());
 }
 
 var default_options: Record<string, any> = {
@@ -46,7 +82,8 @@ var default_options: Record<string, any> = {
   nt_top_blocked: false,
   nt_top_newtab: false,
   nt_top_searchshortcuts: false,
-  nt_top_nofavicons: false
+  nt_top_nofavicons: false,
+  remote_lisp: false
 };
 
 // unlike the old way this only fires on update/install, not every time
@@ -63,6 +100,7 @@ chrome.runtime.onInstalled.addListener((_details) => {
 
 chrome.storage.sync.get(default_options, function(stored) {
   Object.assign(options, stored);
+  setRemoteLoadAllowed(!!options.remote_lisp);
 });
 
 function onSuccess(): void {}
@@ -110,6 +148,7 @@ function logMsg(msg: any): boolean {
 chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
   if (port.name === 'minibuffer') {
     port.onDisconnect.addListener(() => {
+      getAction().setPopup({popup: "/popup/minibuffer.html"});
       if (search_tab_id) {
         chrome.tabs.sendMessage(search_tab_id, {action: 'find_clear'}, () => {
           if (chrome.runtime.lastError) {}
@@ -134,6 +173,19 @@ chrome.runtime.onMessage.addListener((msg: any, sender: chrome.runtime.MessageSe
       if (msg.key in options && options[msg.key] != msg.value) {
         logMsg(`setting ${msg.key} to ${msg.value}`);
         options[msg.key] = msg.value;
+        if (msg.key === 'remote_lisp') {
+          if (msg.value) {
+            // Request the optional permission so the browser-level XHR is allowed.
+            // permissions.request() needs a user-gesture context (options page click).
+            chrome.permissions.request({ origins: ['<all_urls>'] }, (granted) => {
+              setRemoteLoadAllowed(granted);
+              options.remote_lisp = granted;
+            });
+          } else {
+            setRemoteLoadAllowed(false);
+            chrome.permissions.remove({ origins: ['<all_urls>'] });
+          }
+        }
         sendResponse(true);
       } else
         sendResponse(false);
