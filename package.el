@@ -327,8 +327,10 @@ version info from git tags."
     (bundle-background)
     (bundle-minibuffer)
     (message "Building %s" zip-name)
-    (setq zip-files (directory-files-recursively "." (rx (or ".html" ".js" ".json" ".png" ".lisp" "icons" "LICENSE"))))
-    (apply #'call-process "zip" nil "*zip*" nil "-r" "-FS" zip-name (append zip-files))))
+    (setq zip-files
+          (append '("./manifest.json")
+                  (directory-files-recursively "." (rx "." (or "html" "js" "png" "lisp" "icons" "LICENSE") eos))))
+    (apply #'call-process "zip" nil "*zip*" nil "-r" "-x" "node_modules*" "-FS" zip-name (append zip-files))))
 
 (message "Building html pages...")
 (make-html)
