@@ -115,13 +115,23 @@ async function loadTopSites(): Promise<void> {
   for (const topSite of topSites) {
     var groupItem = document.createElement("div");
 
+    const a = document.createElement('a');
+    a.href = topSite.url;
     if (options.nt_top_nofavicons) {
       groupItem.className = "group-list-item";
-      groupItem.innerHTML = `<a href="${topSite.url}">${topSite.title}</a>`;
+      a.textContent = topSite.title;
     } else {
       groupItem.className = "group-item";
-      groupItem.innerHTML = `<a href="${topSite.url}"><div class="group-item-img"><img src="${topSite.favicon}"></div><br />${topSite.title}</a>`;
+      const imgDiv = document.createElement('div');
+      imgDiv.className = 'group-item-img';
+      const img = document.createElement('img');
+      img.src = topSite.favicon ?? '';
+      imgDiv.appendChild(img);
+      a.appendChild(imgDiv);
+      a.appendChild(document.createElement('br'));
+      a.appendChild(document.createTextNode(topSite.title));
     }
+    groupItem.appendChild(a);
 
     container.appendChild(groupItem);
 
@@ -176,10 +186,10 @@ async function loadSearchEngines(): Promise<void> {
         new_row = table.insertRow(table.rows.length);
     }
 
-    row.cells[0].innerHTML = engine.alias;
-    row.cells[1].innerHTML = engine.name;
+    row.cells[0].textContent = engine.alias;
+    row.cells[1].textContent = engine.name;
     if (engine.isDefault)
-      row.cells[2].innerHTML = "x";
+      row.cells[2].textContent = "x";
   }
 }
 
@@ -236,21 +246,19 @@ function registerHistoryCompleter(input: HTMLInputElement): void {
     for (const item of completions) {
       var completion = document.createElement("div");
       completion.className = "history-completion-element";
-      // order of those input aelements matters as extraction of URL happens
-      // based on index later on
       if (item.title == null) item.title = "";
-      item.title = item.title
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-
-      completion.innerHTML = `<b>${item.title}</b><span style="float:right">[Visits: ${item.visitCount}]</span><br/>${item.url}
-      <input type='hidden' id='url' value='${item.url}'/>
-      <input type='hidden' id='title' value='${item.title}'/>
-      <input type='hidden' id='visitCount' value='${item.visitCount}'/>
-      <input type='hidden' id='lastVisitTime' value='${item.lastVisitTime}'/>`;
+      const bold = document.createElement('b');
+      bold.textContent = item.title;
+      const visits = document.createElement('span');
+      visits.style.float = 'right';
+      visits.textContent = `[Visits: ${item.visitCount}]`;
+      completion.appendChild(bold);
+      completion.appendChild(visits);
+      completion.appendChild(document.createElement('br'));
+      completion.appendChild(document.createTextNode(item.url));
+      completion.dataset.url = item.url;
       completion.addEventListener("click", function(this: HTMLElement) {
-        input.value = this.getElementsByTagName("input")[0].value;
+        input.value = this.dataset.url ?? '';
       });
       container.appendChild(completion);
     }
