@@ -203,7 +203,13 @@ This also handles different manifest versions."
           (setf manifest (assq-delete-all 'browser_action manifest))
           (setf manifest (assq-delete-all 'background manifest))
           (setf (alist-get 'background manifest)
-                '((service_worker . "background.js")))))
+                '((service_worker . "background.js"))))
+        ;; MV3 splits host patterns out of optional_permissions into
+        ;; optional_host_permissions; move them over if present
+        (let ((opt-perms (alist-get 'optional_permissions manifest)))
+          (when opt-perms
+            (setf (alist-get 'optional_host_permissions manifest) opt-perms)
+            (setf manifest (assq-delete-all 'optional_permissions manifest)))))
        (t
         (error "Unsupported manifest version: %s" manifest-version))))
 
