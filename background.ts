@@ -44,14 +44,8 @@ chrome.windows.onRemoved.addListener((windowId) => {
   if (windowId === editor_window_id) editor_window_id = null;
 });
 
-// Leave popup empty so action.onClicked fires; search overrides it temporarily
-getAction().setPopup({popup: ''});
-const _actionTarget: any = getManifestVersion() === 3
-  ? (globalThis as any).chrome?.action
-  : (globalThis as any).browser?.browserAction;
-if (_actionTarget?.onClicked) {
-  _actionTarget.onClicked.addListener(() => openEditorWindow());
-}
+// Search overrides this temporarily with ?mode=search; restored on disconnect.
+getAction().setPopup({popup: '/popup/minibuffer.html'});
 
 var default_options: Record<string, any> = {
   own_tab_page: true,
@@ -148,11 +142,12 @@ function logMsg(msg: any): boolean {
 chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
   if (port.name === 'minibuffer') {
     port.onDisconnect.addListener(() => {
-      getAction().setPopup({popup: "/popup/minibuffer.html"});
+      getAction().setPopup({popup: '/popup/minibuffer.html'});
       if (search_tab_id) {
         chrome.tabs.sendMessage(search_tab_id, {action: 'find_clear'}, () => {
           if (chrome.runtime.lastError) {}
         });
+        search_tab_id = null;
       }
     });
   }
