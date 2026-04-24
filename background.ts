@@ -66,6 +66,7 @@ var default_options: Record<string, any> = {
   debug_level_theme: 1,
   bindings_without_modifier: false,
   bindings_search: true,
+  popup_window_fallback: false,
   experimental: false,
   preferred_input: "dialog",
   nt_url_autosubmit: true,
@@ -268,10 +269,23 @@ chrome.runtime.onMessage.addListener((msg: any, sender: chrome.runtime.MessageSe
       if (opening && (opening as Promise<void>).catch) {
         (opening as Promise<void>).catch((e: Error) => {
           logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open popup error: ' + e.message});
-          // openPopup() failed — restore popup URL so the toolbar button
-          // opens the editor instead of being stuck on search mode.
-          searchAction.setPopup({popup: '/popup/minibuffer.html'});
-          search_tab_id = null;
+          if (options.popup_window_fallback) {
+            chrome.windows.create({
+              url: chrome.runtime.getURL('popup/minibuffer.html?mode=search'),
+              type: 'popup',
+              width: 500,
+              height: 80,
+              focused: true,
+            }, (win) => {
+              if (chrome.runtime.lastError || !win) {
+                searchAction.setPopup({popup: '/popup/minibuffer.html'});
+                search_tab_id = null;
+              }
+            });
+          } else {
+            searchAction.setPopup({popup: '/popup/minibuffer.html'});
+            search_tab_id = null;
+          }
         });
       }
       sendResponse(true);

@@ -66,6 +66,7 @@ Note that bindings without modifier keys are disabled per default. C-n/C-p cause
 <label><input type="checkbox" name="bindings_without_modifier" id="bindings_without_modifier"/> Allow top level keybindings without modifier</label><br/>
 <label><input type="checkbox" name="experimental" id="experimental"/> Enable experimental features</label><br/>
 <label><input type="checkbox" name="bindings_search" id="bindings_search"/> Enable search. This will shadow C-s (save) and C-r (reload)</label><br/>
+<label><input type="checkbox" name="popup_window_fallback" id="popup_window_fallback"/> Open minibuffer in a popup window if the toolbar popup cannot be opened programmatically (typically needed for search for Firefox before 149)</label><br/>
 <!--
 <fieldset>
 <label><input type="radio" name="preferred_input" id="prefer_dialog" value="dialog"> Prefer HTML dialogs</label><br/>
