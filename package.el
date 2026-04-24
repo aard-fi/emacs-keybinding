@@ -29,7 +29,8 @@
         (homepage_url . "https://github.com/bwachter/emacs-keybinding")
         (author . "Wang Kai")
         (browser_specific_settings .
-                                   ((gecko . ((id . "{e95dd474-674a-4768-9965-8360529685a5}")))))
+                                   ((gecko . ((id . "{e95dd474-674a-4768-9965-8360529685a5}")
+                                              (data_collection_permissions . ((required . ["none"])))))))
         (permissions . ["activeTab" "history" "search" "storage" "tabs" "topSites"])
         (optional_permissions . ["<all_urls>"])
         (browser_action .
