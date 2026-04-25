@@ -38,16 +38,19 @@ interface BindingMap {
 function generate_ESC_bindings(bindings: BindingMap): BindingMap {
   var new_bindings: BindingMap = {};
   var esc_bindings: BindingMap = {};
+  var changed = false;
 
   for (const key in bindings) {
     const value = bindings[key];
     if (typeof value == "object") {
       var submap = generate_ESC_bindings(value as BindingMap);
       new_bindings[key] = submap;
+      if (submap !== value) changed = true;
       continue;
     }
     new_bindings[key] = value;
     if (key.startsWith("M-")) {
+      changed = true;
       var esc_key = key.replace("M-", "");
       esc_bindings[esc_key] = value;
     }
@@ -55,6 +58,10 @@ function generate_ESC_bindings(bindings: BindingMap): BindingMap {
 
   if (Object.keys(esc_bindings).length > 0)
     new_bindings['ESC'] = esc_bindings;
+
+  // if nothing changed (no M- bindings, no sub-maps that changed), preserve
+  // the original object so Map lookups by identity still work.
+  if (!changed) return bindings;
 
   return new_bindings;
 }
@@ -86,6 +93,44 @@ var search_keybindings: BindingMap = {
   "C-r": () => safeSendMessage({action: "search"}),
 };
 
+// configure prefix bindings. idea here is pretty much like prefix
+// bindings in emacs - we have a prefix map, and the user can assign
+// a custom key to trigger the prefix map.
+// we're naming our maps here for the default (and most sensible, as
+// matching emacs) key
+const ch_bindings: BindingMap = {
+  "?": () => safeSendMessage({action: "options_page"}),
+  "s": () => safeSendMessage({action: "search"}),
+};
+
+const cx_bindings: BindingMap = {
+  "k":   () => safeSendMessage({action: "close_tab"}),
+  "C-f": () => safeSendMessage({action: "new_tab"}),
+};
+
+const cu_cx_bindings: BindingMap = {
+  "k":   () => safeSendMessage({action: "close_window"}),
+  "C-f": () => safeSendMessage({action: "new_window"}),
+};
+
+const cu_bindings: BindingMap = {
+  "C-x": cu_cx_bindings,
+};
+
+// now with that in place we can now map the prefix binding to its command name
+// so we can open the prefix popup with the right hints for the map. Currently
+// we duplicate the submap there again, which is not ideal.
+// for this do to anything keys need to be configured in the extension UI, and,
+// as explained above, we don't care what that key is - we just know it should
+// trigger the prefix map
+// generate_ESC_bindings preserves object identity for maps with no M- bindings,
+// which is what makes this lookup work on the generated keybinding tables.
+const prefixNames = new Map<BindingMap, string>([
+  [ch_bindings, 'ch'],
+  [cx_bindings, 'cx'],
+  [cu_bindings, 'cu'],
+]);
+
 var body_keybindings: BindingMap = {
   // scroll
   "C-f": () => window.scrollBy(30, 0),
@@ -104,22 +149,9 @@ var body_keybindings: BindingMap = {
   "M-f": () => safeSendMessage({action: "next_tab"}),
   "M-b": () => safeSendMessage({action: "previous_tab"}),
 
-  "C-h": {
-    "?": () => safeSendMessage({action: "options_page"}),
-    "s": () => safeSendMessage({action: "search"}),
-  },
-
-  "C-x": {
-    "k":   () => safeSendMessage({action: "close_tab"}),
-    "C-f": () => safeSendMessage({action: "new_tab"})
-  },
-
-  "C-u": {
-    "C-x": {
-      "k":   () => safeSendMessage({action: "close_window"}),
-      "C-f": () => safeSendMessage({action: "new_window"})
-    }
-  }
+  "C-h": ch_bindings,
+  "C-x": cx_bindings,
+  "C-u": cu_bindings,
 };
 
 var textarea_keybindings: BindingMap = {
@@ -153,6 +185,19 @@ chrome.storage.sync.get("bindings_search", function(setting) {
 chrome.storage.sync.get("experimental", function(setting) {
   if (setting["experimental"] == true) {
     Object.assign(generated_keybindings, experimental_keybindings);
+  }
+});
+
+// pull settings controlling if we handle submaps ourselves (the old
+// behaviour, currently default), or throw the submap to a popup to
+// handle the rest (which pretty much would be just us emulating a command
+// key, and the rest of the code then is the same). Advantage of that route
+// is that we can show hints for what other bindings are available as the
+// user is typing
+var bindings_prefix_popup = false;
+chrome.storage.sync.get("bindings_prefix_popup", function(setting) {
+  if (setting["bindings_prefix_popup"] == true) {
+    bindings_prefix_popup = true;
   }
 });
 
@@ -232,10 +277,20 @@ document.addEventListener("keydown", (e: KeyboardEvent) => {
       current_binding = null;
       e.preventDefault();
       break;
-    case "object":
-      current_binding = command as BindingMap;
+    case "object": {
+      // as explained above, depending on user settings, throw a map to a popup,
+      // or handle it ourselves
+      const map = command as BindingMap;
+      const pname = bindings_prefix_popup ? prefixNames.get(map) : undefined;
+      if (pname) {
+        safeSendMessage({action: 'prefix_popup', prefix: pname});
+        current_binding = null;
+      } else {
+        current_binding = map;
+      }
       e.preventDefault();
       break;
+    }
     default:
       current_binding = null;
       break;

@@ -3,6 +3,7 @@ import { run, runAll, globalEnv, lispToString, setRemoteLoadAllowed } from './li
 var options: Record<string, any> = {};
 var search_tab_id: number | null = null;
 var editor_window_id: number | null = null;
+var prefix_origin_tab_id: number | null = null;
 
 function getManifestVersion(): number {
   return chrome.runtime.getManifest().manifest_version;
@@ -42,6 +43,80 @@ chrome.windows.onRemoved.addListener((windowId) => {
   if (windowId === editor_window_id) editor_window_id = null;
 });
 
+function openSearchPopup(tabId: number | null) {
+  search_tab_id = tabId;
+  const searchAction = getAction();
+  searchAction.setPopup({popup: '/popup/minibuffer.html?mode=search'});
+  const opening = searchAction.openPopup();
+  if (opening && (opening as Promise<void>).catch) {
+    (opening as Promise<void>).catch((e: Error) => {
+      logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open popup error: ' + e.message});
+      if (options.popup_window_fallback) {
+        chrome.windows.create({
+          url: chrome.runtime.getURL('popup/minibuffer.html?mode=search'),
+          type: 'popup', width: 500, height: 80, focused: true,
+        }, (win) => {
+          if (chrome.runtime.lastError || !win) {
+            searchAction.setPopup({popup: '/popup/minibuffer.html'});
+            search_tab_id = null;
+          }
+        });
+      } else {
+        searchAction.setPopup({popup: '/popup/minibuffer.html'});
+        search_tab_id = null;
+      }
+    });
+  }
+}
+
+function openPrefixPopup(tabId: number | null, prefix: string = 'cx') {
+  prefix_origin_tab_id = tabId;
+  const prefixAction = getAction();
+  const timeout = options.prefix_popup_timeout ?? 5000;
+  const popupUrl = `/popup/prefix.html?prefix=${prefix}&timeout=${timeout}`;
+  prefixAction.setPopup({popup: popupUrl});
+  const opening = prefixAction.openPopup();
+  if (opening && (opening as Promise<void>).catch) {
+    (opening as Promise<void>).catch((e: Error) => {
+      logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open prefix popup error: ' + e.message});
+      if (options.popup_window_fallback) {
+        chrome.windows.create({
+          url: chrome.runtime.getURL(`popup/prefix.html?prefix=${prefix}&timeout=${timeout}`),
+          type: 'popup', width: 400, height: 40, focused: true,
+        }, (win) => {
+          if (chrome.runtime.lastError || !win) {
+            prefixAction.setPopup({popup: '/popup/minibuffer.html'});
+            prefix_origin_tab_id = null;
+          }
+        });
+      } else {
+        prefixAction.setPopup({popup: '/popup/minibuffer.html'});
+        prefix_origin_tab_id = null;
+      }
+    });
+  }
+}
+
+chrome.commands.onCommand.addListener((command: string) => {
+  chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    const tabId = tabs[0]?.id ?? null;
+    switch (command) {
+      case 'search':
+        openSearchPopup(tabId);
+        break;
+      case 'cx-prefix':
+        openPrefixPopup(tabId, 'cx');
+        break;
+      case 'ch-prefix':
+        openPrefixPopup(tabId, 'ch');
+        break;
+      case 'cu-prefix':
+        openPrefixPopup(tabId, 'cu');
+        break;
+    }
+  });
+});
+
 // Search overrides this temporarily with ?mode=search; restored on disconnect.
 getAction().setPopup({popup: '/popup/minibuffer.html'});
 // onClicked only fires when popup is '' (no URL), so it is never triggered in
@@ -66,6 +141,8 @@ var default_options: Record<string, any> = {
   debug_level_theme: 1,
   bindings_without_modifier: false,
   bindings_search: true,
+  bindings_prefix_popup: false,
+  prefix_popup_timeout: 5000,
   popup_window_fallback: false,
   experimental: false,
   preferred_input: "dialog",
@@ -158,6 +235,11 @@ chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         search_tab_id = null;
       }
     });
+  } else if (port.name === 'prefix') {
+    port.onDisconnect.addListener(() => {
+      getAction().setPopup({popup: '/popup/minibuffer.html'});
+      prefix_origin_tab_id = null;
+    });
   }
 });
 
@@ -165,7 +247,11 @@ chrome.runtime.onMessage.addListener((msg: any, sender: chrome.runtime.MessageSe
   if (msg.action != "log")
     logMsg({'subsystem': 'backend', 'message': msg.action});
 
-  let current_tab = sender.tab;
+  // sender.tab is null for messages from extension pages (popups, prefix page).
+  // Fall back to prefix_origin_tab_id so prefix popup actions hit the right tab.
+  let current_tab = sender.tab ?? (prefix_origin_tab_id !== null
+    ? {id: prefix_origin_tab_id} as chrome.tabs.Tab
+    : null);
 
   switch(msg.action) {
     case "log":
@@ -261,36 +347,14 @@ chrome.runtime.onMessage.addListener((msg: any, sender: chrome.runtime.MessageSe
       }
       sendResponse(true);
       break;
-    case "search": {
-      search_tab_id = current_tab ? current_tab.id! : null;
-      const searchAction = getAction();
-      searchAction.setPopup({popup: "/popup/minibuffer.html?mode=search"});
-      const opening = searchAction.openPopup();
-      if (opening && (opening as Promise<void>).catch) {
-        (opening as Promise<void>).catch((e: Error) => {
-          logMsg({'subsystem': 'backend', 'level': 'error', 'message': 'Open popup error: ' + e.message});
-          if (options.popup_window_fallback) {
-            chrome.windows.create({
-              url: chrome.runtime.getURL('popup/minibuffer.html?mode=search'),
-              type: 'popup',
-              width: 500,
-              height: 80,
-              focused: true,
-            }, (win) => {
-              if (chrome.runtime.lastError || !win) {
-                searchAction.setPopup({popup: '/popup/minibuffer.html'});
-                search_tab_id = null;
-              }
-            });
-          } else {
-            searchAction.setPopup({popup: '/popup/minibuffer.html'});
-            search_tab_id = null;
-          }
-        });
-      }
+    case "search":
+      openSearchPopup(current_tab?.id ?? null);
       sendResponse(true);
       break;
-    }
+    case "prefix_popup":
+      openPrefixPopup(current_tab?.id ?? null, msg.prefix ?? 'cx');
+      sendResponse(true);
+      break;
     case "find":
       if (msg.search.length > 0) {
         logMsg(`Searching for: ${msg.search}`);

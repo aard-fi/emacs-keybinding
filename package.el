@@ -44,7 +44,12 @@
         (options_ui . ((page . "options.html")))
         (content_scripts .
                          [((matches . ["<all_urls>"])
-                           (js . ["search.js" "keybindings.js"])) ])))
+                           (js . ["search.js" "keybindings.js"]))])
+        (commands .
+                  ((search   . ((description . "Open search / find in page")))
+                   (ch-prefix . ((description . "C-h prefix key")))
+                   (cu-prefix . ((description . "C-h prefix key")))
+                   (cx-prefix . ((description . "C-x prefix key (new tab, close tab, ...)")))))))
 
 (setq base-package-json
       '(("name" . "emacs-keybinding")

@@ -13,16 +13,25 @@ For reporting problems please use the [[https://github.com/bwachter/emacs-keybin
 * Keybindings
 Note that bindings without modifier keys are disabled per default. C-n/C-p causes the most issues - see the [[./doc/troubleshooting.org][troubleshooting guide]].
 
+Firefox versions 147+ support keyboard mappings via =about:keyboard=. While this does not support key sequences simple keybindings can be adjusted there, and are no longer tied to a page. The following tables contain searchable names for =about:keyboard= to allow easy removing or redefining. For the prefix keys it is recommended to clear them, and then assign them to the extension (=Manage extension shortcuts= in the extension settings).
+
+
+| prefix | Firefox binding |
+|--------+-----------------|
+| C-h    | History         |
+| C-u    | Page Source     |
+| C-x    | Cut             |
+
 ** Scroll
 
-| keymap   | description      |
-|----------+------------------|
-| C-n or n | scroll down      |
-| C-p or p | scroll up        |
-| C-f      | scroll right     |
-| C-b      | scroll left      |
-| M-<      | scroll to top    |
-| M->      | scroll to bottom |
+| keymap   | description      | Firefox defaults |
+|----------+------------------+------------------|
+| C-n or n | scroll down      | New Window       |
+| C-p or p | scroll up        | Print            |
+| C-f      | scroll right     | Find in Page     |
+| C-b      | scroll left      | Bookmarks        |
+| M-<      | scroll to top    |                  |
+| M->      | scroll to bottom |                  |
 
 ** Tab
 
@@ -53,11 +62,11 @@ Note that bindings without modifier keys are disabled per default. C-n/C-p cause
 
 ** Search (experimental - enable in options)
 
-| keymap | description                               |
-|--------+-------------------------------------------|
-| C-h s  | open search popup                         |
-| C-s    | find next match, open popup if needed     |
-| C-r    | find previous match, open popup if needed |
+| keymap | description                               | Firefox defaults |
+|--------+-------------------------------------------+------------------|
+| C-h s  | open search popup                         |                  |
+| C-s    | find next match, open popup if needed     | Save as          |
+| C-r    | find previous match, open popup if needed | Reload           |
 
 * Configuration
 
@@ -71,6 +80,8 @@ Hello github?
 <label><input type="checkbox" name="bindings_without_modifier" id="bindings_without_modifier"/> Allow top level keybindings without modifier</label><br/>
 <label><input type="checkbox" name="experimental" id="experimental"/> Enable experimental features</label><br/>
 <label><input type="checkbox" name="bindings_search" id="bindings_search"/> Enable search. This will shadow C-s (save) and C-r (reload)</label><br/>
+<label><input type="checkbox" name="bindings_prefix_popup" id="bindings_prefix_popup"/> Show prefix popup with available bindings when a prefix key (C-x, C-h, C-u) is pressed in a page</label><br/>
+<label>Prefix popup idle timeout (ms, 0 = no timeout): <input type="number" name="prefix_popup_timeout" id="prefix_popup_timeout" min="0" step="500"/></label><br/>
 <label><input type="checkbox" name="popup_window_fallback" id="popup_window_fallback"/> Open minibuffer in a popup window if the toolbar popup cannot be opened programmatically (typically needed for search for Firefox before 149)</label><br/>
 <!--
 <fieldset>

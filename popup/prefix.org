@@ -1,0 +1,13 @@
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil
+#+EXPORT_FILE_NAME: prefix.html
+#+TITLE: Prefix key
+#+HTML_HEAD: <link rel="stylesheet" href="../extension.css"/>
+
+#+BEGIN_EXPORT html
+<div id="prompt">
+  <span id="prefix"></span>
+  <span id="cursor">▌</span>
+  <span id="hints"></span>
+</div>
+<script src="prefix.js"></script>
+#+END_EXPORT
