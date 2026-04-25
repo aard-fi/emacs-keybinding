@@ -55,10 +55,14 @@ Note that bindings without modifier keys are disabled per default. C-n/C-p cause
 | keymap | description                               |
 |--------+-------------------------------------------|
 | C-h s  | open search popup                         |
-| C-x s  | find next match, open popup if needed     |
-| C-x r  | find previous match, open popup if needed |
+| C-s    | find next match, open popup if needed     |
+| C-r    | find previous match, open popup if needed |
 
 * Configuration
+
+#+BEGIN_EXPORT md
+Hello github?
+#+END_EXPORT
 
 #+BEGIN_EXPORT html
 <form>
