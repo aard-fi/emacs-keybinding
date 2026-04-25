@@ -351,7 +351,7 @@ version info from git tags."
     (message "Building %s" zip-name)
     (setq zip-files
           (append '("./manifest.json")
-                  (directory-files-recursively "." (rx "." (or "html" "js" "png" "lisp" "icons" "LICENSE") eos))))
+                  (directory-files-recursively "." (rx "." (or "html" "js" "css" "png" "lisp" "icons" "LICENSE") eos))))
     (apply #'call-process "zip" nil "*zip*" nil "-r" "-x" "node_modules*" "-FS" zip-name (append zip-files))))
 
 (defun prepare ()

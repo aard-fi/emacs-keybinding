@@ -1,14 +1,7 @@
-#+OPTIONS: html-postamble:nil toc:nil title:nil
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil
 #+EXPORT_FILE_NAME: minibuffer.html
 #+TITLE: Minibuffer
-#+HTML_HEAD: <style type="text/css">
-#+HTML_HEAD: body { margin: 0; padding: 0; min-width: 320px; }
-#+HTML_HEAD: body.editor-mode { min-width: 500px; }
-#+HTML_HEAD: #minibuffer-wrap { display: flex; align-items: center; gap: 4px; padding: 4px; }
-#+HTML_HEAD: #minibuffer-prompt { white-space: nowrap; font-family: monospace; }
-#+HTML_HEAD: #lisp-editor { display: none; width: 100%; }
-#+HTML_HEAD: #lisp-output { display: none; font-family: monospace; font-size: 0.9em; padding: 4px; background: #f0f0f0; border-top: 1px solid #ccc; white-space: pre-wrap; min-height: 1.5em; }
-#+HTML_HEAD: </style>
+#+HTML_HEAD: <link rel="stylesheet" href="../extension.css"/>
 
 #+BEGIN_EXPORT html
 <div id="minibuffer-wrap">

@@ -1,5 +1,6 @@
-#+OPTIONS: html-postamble:nil toc:nil
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil
 #+EXPORT_FILE_NAME: options.html
+#+HTML_HEAD: <link rel="stylesheet" href="extension.css"/>
 
 This is a Emacs key binding addon for Firefox, but also should work with Chrome. These keybindings work in most webpages, but not in internal Firefox pages ('about:xxxx', new tab page).
 
