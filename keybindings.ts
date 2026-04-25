@@ -146,6 +146,7 @@ chrome.storage.sync.get("bindings_without_modifier", function(setting) {
 chrome.storage.sync.get("bindings_search", function(setting) {
   if (setting["bindings_search"] == true) {
     Object.assign(generated_keybindings, search_keybindings);
+    Object.assign(generated_textarea_keybindings, search_keybindings);
   }
 });
 
