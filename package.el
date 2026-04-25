@@ -17,6 +17,7 @@
 (require 'vc-git)
 (require 'json)
 (require 'ansi-color)
+(require 'project)
 
 ;; this is the baseline manifest, set to invalid manifest version to be sure
 ;; it gets rebuilt later on.
@@ -90,6 +91,26 @@ Returns a list with information:
           :head-tag head-tag
           :count count
           :hash rev-hash)))
+
+(defun clean ()
+  "Remove package.json, tsconfig*.json, *.zip and node_modules/ recursively."
+  (interactive)
+  (let ((default-directory (or (project-root (project-current)) default-directory)))
+    ;; remove named files in the root
+    (dolist (pattern '("package.json" "tsconfig.*json" "*.zip"))
+      (dolist (file (file-expand-wildcards pattern))
+        (when (file-exists-p file)
+          (delete-file file)
+          (message "Removed file: %s" file))))
+
+    ;; recursively find and remove all node_modules directories
+    ;; Using 'directory-files-recursively' with include-directories set to t
+    (let ((node-dirs (directory-files-recursively default-directory "^node_modules$" t)))
+      (dolist (dir node-dirs)
+        (when (file-directory-p dir)
+          (delete-directory dir t t) ; RECURSIVE=t, TRASH=t (or nil to bypass bin)
+          (message "Removed directory: %s" dir))))
+    (message "Clean finished.")))
 
 (defun create-tsconfig (ts-config-path is-chrome)
   "Build browser-specific tsconfig at `ts-config-path'.
@@ -333,24 +354,33 @@ version info from git tags."
                   (directory-files-recursively "." (rx "." (or "html" "js" "png" "lisp" "icons" "LICENSE") eos))))
     (apply #'call-process "zip" nil "*zip*" nil "-r" "-x" "node_modules*" "-FS" zip-name (append zip-files))))
 
-(message "Building html pages...")
-(make-html)
-(ensure-npm-deps)
-(create-node-tsconfig "tsconfig.json")
+(defun prepare ()
+  "Group the prepare build steps"
+  (message "Building html pages...")
+  (make-html)
+  (ensure-npm-deps)
+  (create-node-tsconfig "tsconfig.json"))
 
 (let ((target (car argv)))
   (cond
    ((string= target "firefox")
     (message "Building for Firefox only...")
+    (prepare)
     (make-zip nil))
 
    ((string= target "chrome")
     (message "Building for Chrome only...")
+    (prepare)
     (make-zip t))
 
    ((string= target "test")
     (message "Running lisp tests...")
+    (prepare)
     (run-lisp-test))
+
+   ((string= target "clean")
+    (message "Removing dirt...")
+    (clean))
 
    (t
     (message "No specific target or unknown target '%s'; building both..." (or target "all"))
