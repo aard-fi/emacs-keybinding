@@ -13,4 +13,4 @@ The short version:
 - Firefox >= 147 allows removing or editing keybindings through =about:keyboard=. This does not support sequences (like =C-x C-f=) - but single bindings (like =C-g= to stop page load) work better that way. You can also free the C-s binding, and assign it as key to this extension - which makes search work 147 onwards. For even older Firefox there's the option of opening search in a separate window.
 - It is possible to assign keys for the supported prefix bindings (=C-x=, =C-u= and =C-h=) to the extension. This allows triggering related keybindings outside of the content script as well. While this also works with older Firefox versions it only really makes sense with 147 onwards, as Firefox does not allow re-using its own keybindings otherwise.
 
-For the long version please consult the [[./userguide.org][user guide]].
+For the long version please consult the [[./userguide.org][user guide]] or the [[./changelog.org][changelog]].

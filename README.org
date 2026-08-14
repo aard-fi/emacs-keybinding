@@ -8,6 +8,8 @@ Due to limitations of the current extension interface it is not possible to chan
 
 Shortcomings of the extension interface also require a page to have fully loaded before keybindings can work - i.e., adding a keybinding for aborting loading of a new tab is not possible. Future versions may try workarounds for some keybindings by defining command keys.
 
+For changes please check the [[./doc/changelog.org][changelog]].
+
 * Configuration
 
 #+BEGIN_EXPORT html
