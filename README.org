@@ -1,78 +1,14 @@
-#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil num:nil
 #+EXPORT_FILE_NAME: options.html
 #+HTML_HEAD: <link rel="stylesheet" href="extension.css"/>
 
 This is a Emacs key binding addon for Firefox, but also should work with Chrome. These keybindings work in most webpages, but not in internal Firefox pages ('about:xxxx', new tab page).
 
-Due to limitations of the current extension interface it is not possible to change keybindings for the Firefox user interface itself - and overriding only works for some of the keys, varying between platforms. If bindings are not working please check the [[./doc/troubleshooting.org][troubleshooting guide]] for tips on how to change Firefox configuration to disable conflicting Firefox bindings.
+Due to limitations of the current extension interface it is not possible to change keybindings for the Firefox user interface itself - and overriding only works for some of the keys, varying between platforms. If bindings are not working please check the [[./doc/userguide.org][user guide]] for tips on how to change Firefox configuration to disable conflicting Firefox bindings.
 
 Shortcomings of the extension interface also require a page to have fully loaded before keybindings can work - i.e., adding a keybinding for aborting loading of a new tab is not possible. Future versions may try workarounds for some keybindings by defining command keys.
 
-For reporting problems please use the [[https://github.com/bwachter/emacs-keybinding/issues][Github issue tracker]]. The [[./doc/index.org][developer documentation]] is useful if you want to contribute to this extension.
-
-* Keybindings
-Note that bindings without modifier keys are disabled per default. C-n/C-p causes the most issues - see the [[./doc/troubleshooting.org][troubleshooting guide]].
-
-Firefox versions 147+ support keyboard mappings via =about:keyboard=. While this does not support key sequences simple keybindings can be adjusted there, and are no longer tied to a page. The following tables contain searchable names for =about:keyboard= to allow easy removing or redefining. For the prefix keys it is recommended to clear them, and then assign them to the extension (=Manage extension shortcuts= in the extension settings).
-
-
-| prefix | Firefox binding |
-|--------+-----------------|
-| C-h    | History         |
-| C-u    | Page Source     |
-| C-x    | Cut             |
-
-** Scroll
-
-| keymap   | description      | Firefox defaults |
-|----------+------------------+------------------|
-| C-n or n | scroll down      | New Window       |
-| C-p or p | scroll up        | Print            |
-| C-f      | scroll right     | Find in Page     |
-| C-b      | scroll left      | Bookmarks        |
-| M-<      | scroll to top    |                  |
-| M->      | scroll to bottom |                  |
-
-** Tab
-
-| keymap  | description                   |
-|---------+-------------------------------|
-| M-f     | next tab                      |
-| M-b     | previous tab                  |
-| C-x C-f | new tab                       |
-| C-x k   | close current tab             |
-| t       | focus on the first input area |
-
-** Window
-
-| keymap      | description          |
-|-------------+----------------------|
-| C-u C-x C-f | new window           |
-| C-u C-x k   | close current window |
-
-** Others
-
-| keymap | description                |
-|--------+----------------------------|
-| C-g    | focus on window            |
-| C-r    | refresh                    |
-| C-F    | history forward            |
-| C-B    | history back               |
-| C-h ?  | display help/settings page |
-
-** Search (experimental - enable in options)
-
-| keymap | description                               | Firefox defaults |
-|--------+-------------------------------------------+------------------|
-| C-h s  | open search popup                         |                  |
-| C-s    | find next match, open popup if needed     | Save as          |
-| C-r    | find previous match, open popup if needed | Reload           |
-
 * Configuration
-
-#+BEGIN_EXPORT md
-Hello github?
-#+END_EXPORT
 
 #+BEGIN_EXPORT html
 <form>
@@ -83,6 +19,7 @@ Hello github?
 <label><input type="checkbox" name="bindings_prefix_popup" id="bindings_prefix_popup"/> Show prefix popup with available bindings when a prefix key (C-x, C-h, C-u) is pressed in a page</label><br/>
 <label>Prefix popup idle timeout (ms, 0 = no timeout): <input type="number" name="prefix_popup_timeout" id="prefix_popup_timeout" min="0" step="500"/></label><br/>
 <label><input type="checkbox" name="popup_window_fallback" id="popup_window_fallback"/> Open minibuffer in a popup window if the toolbar popup cannot be opened programmatically (typically needed for search for Firefox before 149)</label><br/>
+<label><input type="checkbox" name="show_upgrade_info" id="show_upgrade_info"/> Show changelog after each update</label><br/>
 <!--
 <fieldset>
 <label><input type="radio" name="preferred_input" id="prefer_dialog" value="dialog"> Prefer HTML dialogs</label><br/>

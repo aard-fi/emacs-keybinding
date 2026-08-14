@@ -1,0 +1,16 @@
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil num:nil
+#+EXPORT_FILE_NAME: install.html
+#+HTML_HEAD: <link rel="stylesheet" href="../extension.css"/>
+
+/To make the most of this extension some manual configuration is required - which is why you see this notice on installation, despite me generally trying to stay out of your way. You'll never see upgrade hints again, unless you check "show changelog after each upgrade" in [[../options.org][add-on settings]]./
+
+* [[../icons/emacs-38.png]] First installation of the Emacs keybinding extension
+
+The short version:
+
+- this extension works by loading a content script into each website to intercept keys. This has the drawback of the keybindings only working once a site is mostly loaded.
+- Firefox >= 149 allows popups without a user action. This means we can show a search popup with =C-s=.
+- Firefox >= 147 allows removing or editing keybindings through =about:keyboard=. This does not support sequences (like =C-x C-f=) - but single bindings (like =C-g= to stop page load) work better that way. You can also free the C-s binding, and assign it as key to this extension - which makes search work 147 onwards. For even older Firefox there's the option of opening search in a separate window.
+- It is possible to assign keys for the supported prefix bindings (=C-x=, =C-u= and =C-h=) to the extension. This allows triggering related keybindings outside of the content script as well. While this also works with older Firefox versions it only really makes sense with 147 onwards, as Firefox does not allow re-using its own keybindings otherwise.
+
+For the long version please consult the [[./userguide.org][user guide]].

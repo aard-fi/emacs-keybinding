@@ -162,19 +162,40 @@ var default_options: Record<string, any> = {
   nt_top_newtab: false,
   nt_top_searchshortcuts: false,
   nt_top_nofavicons: false,
-  remote_lisp: false
+  remote_lisp: false,
+  show_upgrade_info: false
 };
 
 // unlike the old way this only fires on update/install, not every time
-// the service worker wakes up. On update this pulls existing values,  merges
-// it with the defaults, and writes it back to storage.
-chrome.runtime.onInstalled.addListener((_details) => {
+// the service worker wakes up. On update this pulls existing values, merges
+// with defaults, and writes back to storage.
+// onboarding_shown is not in default_options — it's a one-time tracking flag,
+// not a user setting, so we manage it separately to avoid it being reset by
+// accident.
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.sync.get(default_options, (data) => {
     chrome.storage.sync.set(data);
   });
-  // in case we ever want to add a "first install" screen:
-  //if (_details.reason === 'install') {
-  //}
+
+  if (details.reason === 'install') {
+    // first install: show the install/welcome page and mark onboarding done
+    // so the upgrade page is never shown for this installation.
+    chrome.storage.sync.set({onboarding_shown: true});
+    chrome.tabs.create({url: chrome.runtime.getURL('doc/install.html')});
+  } else if (details.reason === 'update') {
+    chrome.storage.sync.get(['onboarding_shown', 'show_upgrade_info'], (data) => {
+      if (!data.onboarding_shown) {
+        // predates the onboarding feature — show upgrade page exactly once (hopefully)
+        chrome.storage.sync.set({onboarding_shown: true});
+        chrome.tabs.create({url: chrome.runtime.getURL('doc/upgrade.html')});
+      } else if (data.show_upgrade_info) {
+        // user opted in to upgrade info on each update.
+        // todo, we probably want upgrade notes to be different from the
+        // one time notification
+        chrome.tabs.create({url: chrome.runtime.getURL('doc/changelog.html')});
+      }
+    });
+  }
 });
 
 chrome.storage.sync.get(default_options, function(stored) {

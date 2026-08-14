@@ -1,0 +1,23 @@
+#+OPTIONS: html-postamble:nil toc:nil title:nil html-style:nil
+#+EXPORT_FILE_NAME: changelog.html
+#+HTML_HEAD: <link rel="stylesheet" href="../extension.css"/>
+
+/You're seeing this page because you wanted to. If you changed your mind for future upgrades go to the [[../options.org][add-on settings]] and uncheck "show changelog after each upgrade"./
+
+#+BEGIN_EXPORT html
+<script src="keybindings.js"></script>
+<script src="theme.js"></script>
+#+END_EXPORT
+147 onw
+* Changelog
+
+** 0.4 series
+*** 0.4.0
+- add popup workaround for older Firefox versions: Firefox before 149 requires a user action for opening a popup. If we detect that we can open a window instead. As this is potentially annoying there's a setting for that, and it is disabled per default.
+- fix CSS: now all pages share the same CSS, and we also now support dark mode.
+- add support for command keys. This makes sense with Firefox 147 onwards where users can remove or update keybindings: Unlike Chrome Firefox does not allow shadowing browser bindings via extension shortcuts. Command keys go via the popup logic: we show a popup with additional info, and while the popup is open key events are handled there.
+- rewrite all prefix maps into configurable prefix bindings. The obvious entry point are the command keys - but we also support the legacy keypress handler to throw prefix maps the popup route. There's now a setting to enable that.
+- add logic for showing changelogs on updates, with a setting to enable it. It's off per default to avoid annoying users.
+- export defun/defvars from our toy lisp to JS namespace. This allows calling those functions with =lisp.fn= from JS.
+- improve documentation.
+- add matrix room [[https://matrix.to/#/#emacs-keybinding:wachter.fi][#emacs-keybinding:wachter.fi]]

@@ -1,0 +1,108 @@
+#+OPTIONS: html-postamble:nil title:nil html-style:nil num:nil
+#+EXPORT_FILE_NAME: userguide.html
+#+HTML_HEAD: <link rel="stylesheet" href="../extension.css"/>
+
+[[../options.org][Add-on settings]]
+
+* User guide
+** Default keybindings
+
+Note that bindings without modifier keys are disabled per default. C-n/C-p causes the most issues - see the the OS specific configuration hints below.
+
+Firefox versions 147+ support keyboard mappings via =about:keyboard=. While this does not support key sequences simple keybindings can be adjusted there, and are no longer tied to a page. The following tables contain searchable names for =about:keyboard= to allow easy removing or redefining. For the prefix keys it is recommended to clear them, and then assign them to the extension (=Manage extension shortcuts= in the extension settings).
+
+This extension now registers as an action to enable developing some more features. Interacting with the action button is optional - you can remove the button from the toolbar if you're not interested in using it.
+
+| prefix | Firefox binding |
+|--------+-----------------|
+| C-h    | History         |
+| C-u    | Page Source     |
+| C-x    | Cut             |
+
+*** Scroll
+
+| keymap   | description      | Firefox defaults |
+|----------+------------------+------------------|
+| C-n or n | scroll down      | New Window       |
+| C-p or p | scroll up        | Print            |
+| C-f      | scroll right     | Find in Page     |
+| C-b      | scroll left      | Bookmarks        |
+| M-<      | scroll to top    |                  |
+| M->      | scroll to bottom |                  |
+
+*** Tab
+
+| keymap  | description                   |
+|---------+-------------------------------|
+| M-f     | next tab                      |
+| M-b     | previous tab                  |
+| C-x C-f | new tab                       |
+| C-x k   | close current tab             |
+| t       | focus on the first input area |
+
+*** Window
+
+| keymap      | description          |
+|-------------+----------------------|
+| C-u C-x C-f | new window           |
+| C-u C-x k   | close current window |
+
+*** Others
+
+| keymap | description                |
+|--------+----------------------------|
+| C-g    | focus on window            |
+| C-r    | refresh                    |
+| C-F    | history forward            |
+| C-B    | history back               |
+| C-h ?  | display help/settings page |
+
+*** Search (experimental - enable in options)
+
+| keymap | description                               | Firefox defaults |
+|--------+-------------------------------------------+------------------|
+| C-h s  | open search popup                         |                  |
+| C-s    | find next match, open popup if needed     | Save as          |
+| C-r    | find previous match, open popup if needed | Reload           |
+
+** Emacs bindings in Firefox UI and text fields
+This extension can't change keybindings in the Firefox UI, and currently does not have keybindings for text fields. Depending on the operating system used this can be partially fixed, though.
+
+*** Windows
+Some keybindings can be configured with the [[https://github.com/catweazle9/emacs-everywhere][emacs-everywhere]] [[https://www.autohotkey.com/][AutoHotkey]] script.
+
+*** Linux
+On Linux Firefox uses GTK - which comes with basic support for Emacs keybindings. =~/.config/gtk-3.0/settings.ini= should contain the following:
+
+#+BEGIN_EXAMPLE
+[Settings]
+gtk-key-theme-name = Emacs
+#+END_EXAMPLE
+
+Additionally the same key should be set in gsettings:
+
+#+BEGIN_EXAMPLE
+gsettings set org.gnome.desktop.interface gtk-key-theme "Emacs"
+#+END_EXAMPLE
+
+On recent Firefox versions this extension seems to be shadowing global Firefox keybindings. If this is not the case on your version the easiest way to free those keybindings is to change the access key used by Firefox, by setting one of the following - depending on browser version - in [[https://support.mozilla.org/fi/kb/about-config-editor-firefox][about:config]]:
+
+- Ui.key.accelKey
+- [[http://kb.mozillazine.org/Ui.key.chromeAccess][Ui.key.chromeAccesss]]
+- [[http://kb.mozillazine.org/Ui.key.generalAccessKey][Ui.key.generalAccessKey]]
+
+accelKey is badly documented, but seems to be taking the same keycodes as generalAccessKey:
+
+| Key     | Code |
+|---------+------|
+| Control |   17 |
+| Alt     |   18 |
+
+Firefox has a built in code editor. The keymap for this can be set by configuring [[https://firefox-source-docs.mozilla.org/devtools-user/keyboard_shortcuts/index.html][devtools.editor.keymap]] to "emacs".
+
+** Contact, bug reports and contributions
+There is the [[https://matrix.to/#/#emacs-keybinding:wachter.fi][#emacs-keybinding:wachter.fi]] matrix room dedicated to discussions about this extension.
+
+For reporting problems please use the [[https://github.com/bwachter/emacs-keybinding/issues][Github issue tracker]].
+
+The [[./doc/index.org][developer documentation]] is useful if you want to contribute to this extension.
